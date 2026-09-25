@@ -119,12 +119,11 @@ Jedes Element hat Skript-Slots (`OnLoad`, `OnClick`, `OnValueChanged` …). Im S
 andere Elemente erreichst du über `E.<Name>`, z. B. `E.MainFrame:Hide()`. **Vorschau** macht alles aktiv:
 Buttons lassen sich klicken, Skripte laufen, verschiebbare Frames lassen sich ziehen. „Bearbeiten“ stellt den Entwurf wieder her.
 
-Der Skript-Editor ist ein Lua-Code-Editor auf Basis der eingebetteten Bibliothek *For All Indents And Purposes*
-(`Libs/ForAllIndentsAndPurposes`, von kristofer.karlsson): Syntax-Highlighting und automatische Einrückung (Tab rückt
-den Code neu ein). Zusätzlich zeigt der Editor Zeilennummern und eine Live-Syntaxprüfung mit „Syntax OK“ oder dem Fehler
-samt Zeile (die Zeilennummer wird rot markiert); Skripte mit Syntaxfehlern lassen sich nicht speichern. Die Farben stehen
-im Text des Eingabefelds, daher schaltet „Alles markieren“ auf den ungefärbten Code um, damit Strg+C genau den Code
-kopiert (beim Weitertippen wird wieder eingefärbt). Die Lua-Export-Ansicht bleibt zum Kopieren ungefärbt.
+Der Skript-Editor funktioniert wie die Code-Box von Watchtower: ein schlichtes mehrzeiliges Eingabefeld in einem
+Scroll-Frame mit der eingebetteten Bibliothek *For All Indents And Purposes* (`Libs/ForAllIndentsAndPurposes`, von
+kristofer.karlsson) für Syntax-Highlighting und automatische Einrückung (Tab rückt den Code neu ein). Skripte mit
+Syntaxfehlern lassen sich nicht speichern; der Hinweis nennt die Zeile. Die Lua-Export-Ansicht bleibt zum Kopieren
+ungefärbt.
 
 ## Export
 

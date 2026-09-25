@@ -130,12 +130,10 @@ Every element has script slots (`OnLoad`, `OnClick`, `OnValueChanged`, …). Ins
 other elements are reachable through `E.<Name>`, e.g. `E.MainFrame:Hide()`. **Preview** makes everything live:
 buttons can be clicked, scripts run and movable frames can be dragged. "Edit mode" restores the design.
 
-The script editor is a Lua code editor based on the embedded library *For All Indents And Purposes*
-(`Libs/ForAllIndentsAndPurposes`, by kristofer.karlsson): syntax highlighting and automatic indentation (Tab
-re-indents the code). On top of it the editor shows line numbers and a live syntax check with "Syntax OK" or the error
-and its line (the line number is marked red); scripts with syntax errors can't be saved. The colors are part of the
-edit box text, so "Select all" switches to the uncolored code and Ctrl+C copies exactly the code (typing colors it
-again). The Lua export view stays uncolored for copying.
+The script editor works like Watchtower's code box: a plain multi-line edit box in a scroll frame with the embedded
+library *For All Indents And Purposes* (`Libs/ForAllIndentsAndPurposes`, by kristofer.karlsson) for syntax
+highlighting and automatic indentation (Tab re-indents the code). Scripts with syntax errors can't be saved; the hint
+names the line. The Lua export view stays uncolored for copying.
 
 ## Export
 

@@ -44,30 +44,63 @@ function Dialogs:GetTextDialog()
 	dialog.hint:SetPoint("RIGHT", -14, 0)
 	dialog.hint:SetJustifyH("LEFT")
 
-	local inset = dialog.Inset or W.Inset(dialog)
-	inset:ClearAllPoints()
-	inset:SetPoint("TOPLEFT", 10, -48)
-	inset:SetPoint("BOTTOMRIGHT", -10, 36)
-	inset:Show()
+	if dialog.Inset then dialog.Inset:Hide() end
 
-	local editor = CreateFrame("Frame", nil, inset, "ScrollingEditBoxTemplate")
-	editor:SetPoint("TOPLEFT", 8, -6)
-	editor:SetPoint("BOTTOMRIGHT", -26, 6)
-	local scrollBar = CreateFrame("EventFrame", nil, inset, "MinimalScrollBar")
-	scrollBar:SetPoint("TOPLEFT", editor, "TOPRIGHT", 8, 0)
-	scrollBar:SetPoint("BOTTOMLEFT", editor, "BOTTOMRIGHT", 8, 0)
-	ScrollUtil.RegisterScrollBoxWithScrollBar(editor:GetScrollBox(), scrollBar)
-	dialog.editor = editor
+	-- Editor built like Watchtower's code box: a plain multi-line EditBox as scroll child
+	-- of a ScrollFrameTemplate on a dark tooltip backdrop.
+	local backdrop = CreateFrame("Frame", nil, dialog, "BackdropTemplate")
+	backdrop:SetPoint("TOPLEFT", 10, -48)
+	backdrop:SetPoint("BOTTOMRIGHT", -10, 36)
+	backdrop:SetBackdrop({
+		bgFile = "Interface/Tooltips/UI-Tooltip-Background",
+		edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+		edgeSize = 16,
+		insets = { left = 4, right = 4, top = 4, bottom = 4 },
+	})
+	backdrop:SetBackdropColor(0.122, 0.122, 0.122, 0.8)
 
-	local editBox = editor:GetEditBox()
-	editBox:SetScript("OnTabPressed", function(self)
-		if not dialog.code:OnTab() then
-			self:Insert("\t")
-		end
+	local scroll = CreateFrame("ScrollFrame", nil, backdrop, "ScrollFrameTemplate")
+	scroll:SetPoint("TOPLEFT", 5, -5)
+	scroll:SetPoint("BOTTOMRIGHT", -20, 4)
+	if scroll.ScrollBar then
+		if scroll.ScrollBar.Back then scroll.ScrollBar.Back:Hide() end
+		if scroll.ScrollBar.Forward then scroll.ScrollBar.Forward:Hide() end
+		scroll.ScrollBar:ClearAllPoints()
+		scroll.ScrollBar:SetPoint("TOP", scroll, 0, 16)
+		scroll.ScrollBar:SetPoint("RIGHT", scroll, 12, 0)
+		scroll.ScrollBar:SetPoint("BOTTOM", scroll, 0, -16)
+	end
+
+	local editBox = CreateFrame("EditBox", nil, scroll)
+	editBox:SetFontObject(ChatFontNormal)
+	editBox:SetPoint("TOPLEFT")
+	editBox:SetWidth(scroll:GetWidth())
+	editBox:SetMultiLine(true)
+	editBox:SetAutoFocus(false)
+	editBox:SetTextColor(0.612, 0.863, 0.996, 1)
+	scroll:SetScrollChild(editBox)
+	scroll:HookScript("OnSizeChanged", function(_, width)
+		editBox:SetWidth(width)
 	end)
+	scroll:SetScript("OnMouseDown", function()
+		editBox:SetFocus()
+	end)
+	editBox:SetScript("OnEscapePressed", function(self)
+		self:ClearFocus()
+	end)
+	-- Keep the cursor in view while typing (Blizzard's helpers for edit boxes in scroll frames).
+	editBox:SetScript("OnCursorChanged", ScrollingEdit_OnCursorChanged)
+	editBox:SetScript("OnUpdate", function(self, elapsed)
+		ScrollingEdit_OnUpdate(self, elapsed, scroll)
+	end)
+	editBox:SetScript("OnTextChanged", function(self)
+		ScrollingEdit_OnTextChanged(self, scroll)
+	end)
+	dialog.editBox = editBox
+	dialog.scroll = scroll
 
 	dialog.accept = W.Button(dialog, L["Save"], 100, function()
-		local text = editor:GetInputText()
+		local text = editBox:GetText()
 		if dialog.onAccept and dialog.onAccept(text) == false then
 			return
 		end
@@ -81,19 +114,15 @@ function Dialogs:GetTextDialog()
 	dialog.cancel:SetPoint("RIGHT", dialog.accept, "LEFT", -4, 0)
 
 	dialog.selectAll = W.Button(dialog, L["Select all"], 100, function()
-		dialog.code:ShowPlain()
 		editBox:SetFocus()
 		editBox:HighlightText()
 	end)
 	dialog.selectAll:SetPoint("BOTTOMLEFT", 10, 8)
 
-	-- Syntax result of code editors ("Syntax OK" / "Line 3: ...").
-	dialog.status = W.Label(dialog, "", "GameFontHighlightSmall")
-	dialog.status:SetPoint("LEFT", dialog.selectAll, "RIGHT", 10, 0)
-	dialog.status:SetPoint("RIGHT", dialog.cancel, "LEFT", -10, 0)
-	dialog.status:SetJustifyH("LEFT")
-	dialog.status:SetWordWrap(false)
-	dialog.code = ns.CodeEditor.Attach(editor, dialog.status)
+	-- Like Watchtower's code box.
+	if dialog.SetFlattensRenderLayers then
+		dialog:SetFlattensRenderLayers(true)
+	end
 
 	dialog:Hide()
 	self.textDialog = dialog
@@ -110,12 +139,12 @@ function Dialogs:ShowText(options)
 	dialog.accept:SetShown(options.acceptText ~= nil)
 	dialog.accept:SetText(options.acceptText or "")
 	dialog.cancel:SetText(options.acceptText and CANCEL or CLOSE)
-	dialog.code:SetMode({ enabled = options.code, args = options.args })
-	dialog.editor:SetText(options.text or "")
-	dialog.code:Refresh()
+	ns.CodeEditor.SetEnabled(dialog.editBox, options.code)
+	dialog.editBox:SetText(options.text or "")
+	dialog.scroll:SetVerticalScroll(0)
 	dialog:Show()
 	dialog:Raise()
-	local editBox = dialog.editor:GetEditBox()
+	local editBox = dialog.editBox
 	editBox:SetFocus()
 	if options.selectAll then
 		editBox:HighlightText()
@@ -140,7 +169,6 @@ function Dialogs:EditScript(id, script)
 		hint = signature,
 		text = node.scripts[script.name] or "",
 		code = true,
-		args = script.args,
 		acceptText = L["Save"],
 		onAccept = function(text)
 			local ok, line, message = ns.LuaSyntax.Check(text, script.args)
