@@ -132,7 +132,7 @@ buttons can be clicked, scripts run and movable frames can be dragged. "Edit mod
 
 The script editor is a code editor: Lua syntax highlighting (keywords, strings, comments, numbers, function calls,
 `self`/`E`/`true`/`false`/`nil`), line numbers, a live syntax check that shows "Syntax OK" or the error with its line
-(the line is also marked), Tab inserts four spaces and Enter keeps the indentation (one level more after `then`, `do`,
+(the line number is marked red), Tab inserts four spaces and Enter keeps the indentation (one level more after `then`, `do`,
 `function`, `repeat`, `{`). Scripts with syntax errors can't be saved. Like *For All Indents And Purposes*, the colors
 are written into the edit box text; "Select all" switches to the uncolored code so Ctrl+C copies exactly the code
 (typing colors it again). The Lua export view stays uncolored for copying.

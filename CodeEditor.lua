@@ -275,8 +275,9 @@ function CodeEditor.Attach(editor, status)
 	gutter:Hide()
 	self.gutter = gutter
 
+	-- Error marker: a bar in the line number column only, so nothing covers the text or cursor.
 	local marker = editBox:CreateTexture(nil, "BACKGROUND")
-	marker:SetColorTexture(1, 0.2, 0.2, 0.25)
+	marker:SetColorTexture(1, 0.2, 0.2, 0.35)
 	marker:Hide()
 	self.marker = marker
 	return self
@@ -379,9 +380,14 @@ function CodeEditor:Update(code)
 	end
 	local box = self.editBox
 	local lines = select(2, code:gsub("\n", "\n")) + 1
+	local ok, errorLine, message = true, nil, nil
+	if self.checkSyntax then
+		ok, errorLine, message = Syntax.Check(code, self.args)
+	end
+
 	local numbers = {}
 	for i = 1, lines do
-		numbers[i] = i
+		numbers[i] = (i == errorLine) and ("|cffff4040" .. i .. "|r") or i
 	end
 	self.gutter:SetText(table.concat(numbers, "\n"))
 	self.gutter:Show()
@@ -391,21 +397,19 @@ function CodeEditor:Update(code)
 		self.status:SetText("")
 		return
 	end
-	local ok, line, message = Syntax.Check(code, self.args)
 	if ok then
 		self.status:SetText("|cff40ff40" .. L["Syntax OK"] .. "|r")
 		return
 	end
-	self.status:SetText("|cffff4040" .. (line and L["Line %d: %s"]:format(line, message) or message) .. "|r")
-	if line then
-		-- Marks the line, assuming it isn't wrapped (code lines usually aren't).
+	self.status:SetText("|cffff4040" .. (errorLine and L["Line %d: %s"]:format(errorLine, message) or message) .. "|r")
+	if errorLine then
+		-- Assumes the line isn't wrapped (code lines usually aren't).
 		local _, fontHeight = box:GetFont()
 		local lineHeight = (fontHeight or 12) + (box.GetSpacing and box:GetSpacing() or 0)
 		local _, _, top = box:GetTextInsets()
 		self.marker:ClearAllPoints()
-		self.marker:SetPoint("TOPLEFT", box, "TOPLEFT", 0, -((top or 0) + (line - 1) * lineHeight))
-		self.marker:SetPoint("RIGHT", box, "RIGHT")
-		self.marker:SetHeight(lineHeight)
+		self.marker:SetPoint("TOPLEFT", box, "TOPLEFT", 0, -((top or 0) + (errorLine - 1) * lineHeight))
+		self.marker:SetSize(GUTTER_WIDTH + 2, lineHeight)
 		self.marker:Show()
 	end
 end

@@ -121,7 +121,7 @@ Buttons lassen sich klicken, Skripte laufen, verschiebbare Frames lassen sich zi
 
 Der Skript-Editor ist ein Code-Editor: Lua-Syntax-Highlighting (Schlüsselwörter, Strings, Kommentare, Zahlen,
 Funktionsaufrufe, `self`/`E`/`true`/`false`/`nil`), Zeilennummern, eine Live-Syntaxprüfung mit „Syntax OK“ oder dem
-Fehler samt Zeile (die Zeile wird zusätzlich markiert), Tab fügt vier Leerzeichen ein und Enter übernimmt die Einrückung
+Fehler samt Zeile (die Zeilennummer wird rot markiert), Tab fügt vier Leerzeichen ein und Enter übernimmt die Einrückung
 (eine Stufe mehr nach `then`, `do`, `function`, `repeat`, `{`). Skripte mit Syntaxfehlern lassen sich nicht speichern.
 Wie bei *For All Indents And Purposes* stehen die Farben direkt im Text des Eingabefelds; „Alles markieren“ schaltet auf
 den ungefärbten Code um, damit Strg+C genau den Code kopiert (beim Weitertippen wird wieder eingefärbt). Die
