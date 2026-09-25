@@ -135,6 +135,124 @@ def size_of(element):
     return 0, 0
 
 
+def api_function_names(root):
+    """Names of all documented widget/API functions (to tell them from custom methods)."""
+    names = set()
+    folder = os.path.join(root, "Interface", "AddOns", "Blizzard_APIDocumentationGenerated")
+    for entry in os.listdir(folder):
+        text = open(os.path.join(folder, entry), encoding="utf-8", errors="replace").read()
+        names |= set(re.findall(r'Name = "(\w+)",\s*\n\s*Type = "Function"', text))
+    return names
+
+
+class HandlerAnalysis:
+    """Static checks of the OnLoad/OnShow handlers a template runs when it is created or shown.
+
+    Handlers are collected over the whole inheritance chain (mixin methods, function="..."
+    handlers and inline scripts) and followed two calls deep (self:Method(), Mixin.Method(self),
+    Global(self)). Only unconditional lines (directly in the function body) are inspected.
+    """
+
+    SCRIPTS = ("OnLoad", "OnShow")
+
+    def __init__(self, lua, api_names):
+        self.api = api_names
+        self.methods, self.functions, self.mixin_parents = {}, {}, {}
+        for m in re.finditer(r"^function (\w+)[:.](\w+)\(([^)]*)\)(.*?)^end", lua, re.M | re.S):
+            self.methods[(m.group(1), m.group(2))] = m.group(4)
+        for m in re.finditer(r"^function (\w+)\(([^)]*)\)(.*?)^end", lua, re.M | re.S):
+            first = m.group(2).split(",")[0].strip()
+            body = m.group(3)
+            if first and first != "self":
+                body = re.sub(r"\b%s\b" % re.escape(first), "self", body)
+            self.functions[m.group(1)] = body
+        for m in re.finditer(r"^(\w+)\s*=\s*CreateFromMixins\(([^)]*)\)", lua, re.M):
+            self.mixin_parents[m.group(1)] = [x.strip() for x in m.group(2).split(",") if x.strip()]
+
+    def expand(self, mixins, depth=0):
+        result = []
+        for mixin in mixins:
+            result.append(mixin)
+            if depth < 6:
+                result += self.expand(self.mixin_parents.get(mixin, []), depth + 1)
+        return result
+
+    def method(self, mixins, name):
+        for mixin in mixins:
+            if (mixin, name) in self.methods:
+                return self.methods[(mixin, name)]
+
+    def bodies(self, entries):
+        mixins = self.expand([m for entry in entries for m in entry[2]])
+        found = []
+        for entry in entries:
+            for scripts in entry[4]:
+                if scripts.tag.split("}")[-1] != "Scripts":
+                    continue
+                for handler in scripts:
+                    if handler.tag.split("}")[-1] not in self.SCRIPTS:
+                        continue
+                    if handler.get("method"):
+                        body = self.method(mixins, handler.get("method"))
+                    elif handler.get("function"):
+                        body = self.functions.get(handler.get("function"))
+                    else:
+                        text = (handler.text or "").strip()
+                        body = ("\n\t" + "\n\t".join(text.splitlines())) if text else None
+                    if body:
+                        found.append(body)
+        # Follow calls made from those handlers.
+        frontier = list(found)
+        for _ in range(2):
+            called = []
+            for body in frontier:
+                for line in self.unconditional(body):
+                    for name in re.findall(r"self:(\w+)\(", line):
+                        body2 = self.method(mixins, name)
+                        if body2:
+                            called.append(body2)
+                    for mixin, name in re.findall(r"(\w+)\.(\w+)\(self\b", line):
+                        if (mixin, name) in self.methods:
+                            called.append(self.methods[(mixin, name)])
+                    for name in re.findall(r"(?<![:.\w])(\w+)\(self\b", line):
+                        if name in self.functions:
+                            called.append(self.functions[name])
+            found += called
+            frontier = called
+        return found, mixins
+
+    @staticmethod
+    def unconditional(body):
+        return [line for line in body.splitlines() if re.match(r"^\t\S", line)]
+
+    def check(self, entries):
+        provided = set()
+        for entry in entries:
+            provided |= entry[3]
+        bodies, mixins = self.bodies(entries)
+        custom = {name for (mixin, name) in self.methods if mixin in mixins}
+        assigned = set()
+        for body in bodies:
+            assigned |= set(re.findall(r"self\.(\w+)\s*=[^=]", body))
+        needs, needs_name = set(), False
+        for body in bodies:
+            needs |= set(re.findall(r"assert\(\s*self\.(\w+)\s*\)", body)) - provided - assigned
+            for line in self.unconditional(body):
+                # Child frames used before anyone created them (capitalised by convention).
+                for key in re.findall(r"self\.([A-Z]\w*)\s*:", line):
+                    if key not in provided and key not in assigned and key not in custom:
+                        needs.add(key)
+                # Methods only a specific parent frame has, or parent fields used further.
+                for name in re.findall(r"self:GetParent\(\):(\w+)\(", line):
+                    if name not in self.api:
+                        needs.add("parent:" + name)
+                for key in re.findall(r"self:GetParent\(\)\.(\w+)\s*[:.\[]", line):
+                    needs.add("parent." + key)
+                if re.search(r"self:GetName\(\)", line):
+                    needs_name = True
+        return sorted(needs), needs_name
+
+
 def main():
     with open(os.path.join(SOURCE, "Interface", "ui-toc-list.txt"), encoding="utf-8") as f:
         tocs = [line.strip() for line in f if line.strip()]
@@ -174,34 +292,13 @@ def main():
                     keyvalues = {kv.get("key") for kv in element.iter() if kv.tag.split("}")[-1] == "KeyValue"}
                     # Children and regions reachable as self.<parentKey>.
                     keyvalues |= {sub.get("parentKey") for sub in element.iter() if sub.get("parentKey")}
-                    info[template] = (size_of(element), inherits, mixins, keyvalues)
+                    info[template] = (size_of(element), inherits, mixins, keyvalues, element)
                     if tag not in WIDGETS or element.get("intrinsic") == "true" or template.startswith("$"):
                         templates.pop(template, None)
                         continue
                     templates[template] = (template, tag, addon)
 
-    # Keys the OnLoad of a mixin asserts, e.g. ScrollingFontMixin needs self.fontName.
-    # Such templates only work through a derived template that sets the key as KeyValue.
-    onload_asserts = {}
-    all_lua = "\n".join(lua_sources)
-    # Also child frames the OnLoad calls into (self.Dropdown:RegisterCallback(...)) without
-    # creating them first; capitalised keys are the convention for child frames.
-    mixin_methods = {}
-    for match in re.finditer(r"^function (\w+):(\w+)\(", all_lua, re.M):
-        mixin_methods.setdefault(match.group(1), set()).add(match.group(2))
-    for match in re.finditer(r"^function (\w+):OnLoad\(\)(.*?)^end", all_lua, re.M | re.S):
-        body = match.group(2)
-        keys = set(re.findall(r"assert\(\s*self\.(\w+)\s*\)", body))
-        assigned = set(re.findall(r"self\.(\w+)\s*=[^=]", body))
-        # Only unconditional accesses count: lines directly in the function body (one tab deep).
-        for line in body.splitlines():
-            if not re.match(r"^\t\S", line):
-                continue
-            for key in re.findall(r"self\.([A-Z]\w*)\s*:", line):
-                if key not in assigned and key not in mixin_methods.get(match.group(1), set()):
-                    keys.add(key)
-        if keys:
-            onload_asserts.setdefault(match.group(1), set()).update(keys)
+    analysis = HandlerAnalysis("\n".join(lua_sources), api_function_names(SOURCE))
 
     def chain(name, depth=0):
         entry = info.get(name)
@@ -211,15 +308,6 @@ def main():
         for parent in entry[1]:
             result += chain(parent, depth + 1)
         return result
-
-    def missing_keys(name):
-        entries = chain(name)
-        needed, provided = set(), set()
-        for _, _, mixins, keyvalues in entries:
-            provided |= keyvalues
-            for mixin in mixins:
-                needed |= onload_asserts.get(mixin, set())
-        return sorted(needed - provided)
 
     def resolve_size(name, depth=0):
         entry = info.get(name)
@@ -234,9 +322,11 @@ def main():
     lines = [
         "-- Forever Frame Builder",
         "-- Generated by Tools/build_templates.py - do not edit by hand.",
-        "-- { template, widget type, addon, default width, default height, shared, needs }",
+        "-- { template, widget type, addon, default width, default height, shared, needs, needsName }",
         "-- shared = true for general-purpose templates (SharedXML, Menu, UIPanelTemplates, ...).",
-        "-- needs = keys its OnLoad asserts but no KeyValue provides: only usable through a derived template.",
+        "-- needs = what its OnLoad/OnShow expects from a derived template or a specific parent",
+        "--         (asserted keys, child frames, parent methods): not usable on its own.",
+        "-- needsName = its OnLoad/OnShow builds names from self:GetName(): needs a global name.",
         "",
         "local _, ns = ...",
         "",
@@ -246,9 +336,10 @@ def main():
         template, tag, addon = templates[name]
         w, h = resolve_size(name)
         shared = "true" if addon in SHARED_ADDONS else "false"
-        needs = missing_keys(name)
+        needs, needs_name = analysis.check(chain(name))
         needs = ('"%s"' % ", ".join(needs)) if needs else "nil"
-        lines.append('\t{ "%s", "%s", "%s", %d, %d, %s, %s },' % (template, tag, addon, w, h, shared, needs))
+        needs_name = "true" if needs_name else "false"
+        lines.append('\t{ "%s", "%s", "%s", %d, %d, %s, %s, %s },' % (template, tag, addon, w, h, shared, needs, needs_name))
     lines.append("}")
     with open(OUT, "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(lines) + "\n")
