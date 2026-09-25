@@ -19,6 +19,8 @@ local DEFAULTS = {
 		showGrid = true,
 		collapsedSections = {}, -- inspector sections the user folded away
 		leftTab = 1, -- 1 = elements, 2 = layers
+		codeFontSize = 14, -- font size of the script/text editor
+		textDialog = nil, -- { point, relPoint, x, y, w, h } of the script/text editor window
 		window = nil, -- { point, x, y, w, h }
 	},
 }

@@ -262,3 +262,4 @@ L["Recorded errors with template, properties and all scripts – for faster bug 
 
 -- Code editor
 L["Line %d: %s"] = "Zeile %d: %s"
+L["Font size of the editor (8-32). Mouse wheel changes it."] = "Schriftgröße des Editors (8–32). Das Mausrad ändert sie."

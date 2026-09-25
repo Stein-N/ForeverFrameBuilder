@@ -133,7 +133,8 @@ buttons can be clicked, scripts run and movable frames can be dragged. "Edit mod
 The script editor works like Watchtower's code box: a plain multi-line edit box in a scroll frame with the embedded
 library *For All Indents And Purposes* (`Libs/ForAllIndentsAndPurposes`, by kristofer.karlsson) for syntax
 highlighting and automatic indentation (Tab re-indents the code). Scripts with syntax errors can't be saved; the hint
-names the line. The Lua export view stays uncolored for copying.
+names the line. The window can be resized with the grip in the bottom right corner, and "Font size" (8-32, Enter or
+mouse wheel) sets the editor font; both are remembered. The Lua export view stays uncolored for copying.
 
 ## Export
 

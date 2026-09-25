@@ -122,7 +122,8 @@ Buttons lassen sich klicken, Skripte laufen, verschiebbare Frames lassen sich zi
 Der Skript-Editor funktioniert wie die Code-Box von Watchtower: ein schlichtes mehrzeiliges Eingabefeld in einem
 Scroll-Frame mit der eingebetteten Bibliothek *For All Indents And Purposes* (`Libs/ForAllIndentsAndPurposes`, von
 kristofer.karlsson) für Syntax-Highlighting und automatische Einrückung (Tab rückt den Code neu ein). Skripte mit
-Syntaxfehlern lassen sich nicht speichern; der Hinweis nennt die Zeile. Die Lua-Export-Ansicht bleibt zum Kopieren
+Syntaxfehlern lassen sich nicht speichern; der Hinweis nennt die Zeile. Das Fenster lässt sich über den Griff unten rechts
+vergrößern, und „Schriftgröße“ (8–32, Enter oder Mausrad) stellt die Schrift des Editors ein; beides wird gespeichert. Die Lua-Export-Ansicht bleibt zum Kopieren
 ungefärbt.
 
 ## Export

@@ -21,20 +21,63 @@ end
 -- Text dialog
 ---------------------------------------------------------------------------
 
+local TEXT_DIALOG_MIN_WIDTH, TEXT_DIALOG_MIN_HEIGHT = 520, 320
+local FONT_SIZE_MIN, FONT_SIZE_MAX = 8, 32
+
+local function SaveTextDialogLayout(dialog)
+	local point, _, relPoint, x, y = dialog:GetPoint()
+	ns.db.settings.textDialog = {
+		point = point, relPoint = relPoint, x = x, y = y,
+		w = dialog:GetWidth(), h = dialog:GetHeight(),
+	}
+end
+
+local function RestoreTextDialogLayout(dialog)
+	local saved = ns.db.settings.textDialog
+	dialog:ClearAllPoints()
+	if saved and saved.point then
+		dialog:SetPoint(saved.point, UIParent, saved.relPoint, saved.x, saved.y)
+		dialog:SetSize(math.max(TEXT_DIALOG_MIN_WIDTH, saved.w), math.max(TEXT_DIALOG_MIN_HEIGHT, saved.h))
+	else
+		dialog:SetPoint("CENTER")
+		dialog:SetSize(640, 480)
+	end
+end
+
 function Dialogs:GetTextDialog()
 	if self.textDialog then return self.textDialog end
 
 	local dialog = CreateFrame("Frame", "ForeverFrameBuilderTextDialog", UIParent, "ButtonFrameTemplate")
-	dialog:SetSize(640, 480)
-	dialog:SetPoint("CENTER")
 	dialog:SetFrameStrata("DIALOG")
 	dialog:SetToplevel(true)
 	dialog:SetMovable(true)
+	dialog:SetResizable(true)
+	dialog:SetResizeBounds(TEXT_DIALOG_MIN_WIDTH, TEXT_DIALOG_MIN_HEIGHT)
 	dialog:SetClampedToScreen(true)
 	dialog:EnableMouse(true)
 	dialog:RegisterForDrag("LeftButton")
 	dialog:SetScript("OnDragStart", dialog.StartMoving)
-	dialog:SetScript("OnDragStop", dialog.StopMovingOrSizing)
+	dialog:SetScript("OnDragStop", function(self)
+		self:StopMovingOrSizing()
+		SaveTextDialogLayout(self)
+	end)
+	RestoreTextDialogLayout(dialog)
+
+	-- Resize grip in the bottom right corner.
+	local grip = CreateFrame("Button", nil, dialog)
+	grip:SetSize(16, 16)
+	grip:SetPoint("BOTTOMRIGHT", -4, 4)
+	grip:SetFrameLevel(dialog:GetFrameLevel() + 20)
+	grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+	grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
+	grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+	grip:SetScript("OnMouseDown", function()
+		dialog:StartSizing("BOTTOMRIGHT")
+	end)
+	grip:SetScript("OnMouseUp", function()
+		dialog:StopMovingOrSizing()
+		SaveTextDialogLayout(dialog)
+	end)
 	ButtonFrameTemplate_HidePortrait(dialog)
 	ButtonFrameTemplate_HideButtonBar(dialog)
 	table.insert(UISpecialFrames, dialog:GetName())
@@ -106,7 +149,7 @@ function Dialogs:GetTextDialog()
 		end
 		dialog:Hide()
 	end)
-	dialog.accept:SetPoint("BOTTOMRIGHT", -10, 8)
+	dialog.accept:SetPoint("BOTTOMRIGHT", -24, 8)
 
 	dialog.cancel = W.Button(dialog, CANCEL, 100, function()
 		dialog:Hide()
@@ -118,6 +161,36 @@ function Dialogs:GetTextDialog()
 		editBox:HighlightText()
 	end)
 	dialog.selectAll:SetPoint("BOTTOMLEFT", 10, 8)
+
+	-- Font size of the editor (saved; Enter or mouse wheel).
+	local fontLabel = W.Label(dialog, L["Font size"], "GameFontHighlightSmall")
+	fontLabel:SetPoint("LEFT", dialog.selectAll, "RIGHT", 14, 0)
+	local fontSize = W.EditBox(dialog, 30)
+	fontSize:SetPoint("LEFT", fontLabel, "RIGHT", 8, 0)
+	fontSize:SetNumeric(true)
+	fontSize:SetMaxLetters(2)
+	fontSize:SetJustifyH("CENTER")
+	local function ApplyFontSize(size)
+		size = Clamp(math.floor(tonumber(size) or ns.db.settings.codeFontSize), FONT_SIZE_MIN, FONT_SIZE_MAX)
+		ns.db.settings.codeFontSize = size
+		local path, _, flags = ChatFontNormal:GetFont()
+		editBox:SetFont(path, size, flags or "")
+		fontSize:SetText(size)
+	end
+	fontSize:SetScript("OnEnterPressed", function(self)
+		self:ClearFocus()
+	end)
+	fontSize:SetScript("OnEditFocusLost", function(self)
+		ApplyFontSize(self:GetText())
+	end)
+	fontSize:EnableMouseWheel(true)
+	fontSize:SetScript("OnMouseWheel", function(_, delta)
+		ApplyFontSize(ns.db.settings.codeFontSize + delta)
+	end)
+	W.Tooltip(fontSize, L["Font size"], L["Font size of the editor (8-32). Mouse wheel changes it."])
+	dialog.fontSize = fontSize
+	dialog.ApplyFontSize = ApplyFontSize
+	ApplyFontSize(ns.db.settings.codeFontSize)
 
 	-- Like Watchtower's code box.
 	if dialog.SetFlattensRenderLayers then
