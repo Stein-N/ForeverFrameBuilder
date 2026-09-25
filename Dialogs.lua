@@ -81,6 +81,7 @@ function Dialogs:GetTextDialog()
 	dialog.cancel:SetPoint("RIGHT", dialog.accept, "LEFT", -4, 0)
 
 	dialog.selectAll = W.Button(dialog, L["Select all"], 100, function()
+		dialog.code:ShowPlain()
 		editBox:SetFocus()
 		editBox:HighlightText()
 	end)
@@ -157,7 +158,6 @@ function Dialogs:ShowExportLua()
 		title = L["Export as Lua"],
 		hint = L["Copy with Ctrl+C and paste it into your addon."],
 		text = ns.Exporter:ToLua(),
-		code = true,
 		selectAll = true,
 	})
 end

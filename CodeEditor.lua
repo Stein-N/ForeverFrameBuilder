@@ -2,8 +2,10 @@
 -- CodeEditor: Lua syntax highlighting, live syntax checks, line numbers and indentation for
 -- a ScrollingEditBoxTemplate.
 --
--- The edit box keeps the plain text (so cursor, selection, copy and GetText stay correct) but
--- draws it invisibly; a font string with the colored copy lies exactly on top of it.
+-- Like "For All Indents And Purposes" (used e.g. by Watchtower), the color codes are written
+-- into the edit box text itself - WoW edit boxes render them. GetText/SetText of the edit box
+-- are wrapped so everyone else only ever sees and sets the plain code, and the cursor is
+-- translated between the colored text and the plain code on every change.
 
 local _, ns = ...
 local L = ns.L
@@ -138,6 +140,81 @@ function Syntax.Check(code, args)
 end
 
 ---------------------------------------------------------------------------
+-- Colored text <-> plain code
+---------------------------------------------------------------------------
+
+-- Plain code of a colored text, plus the plain position of a cursor in the colored text.
+-- Cursor positions count the characters before the cursor.
+function Syntax.Decode(raw, rawCursor)
+	local out, count, plainCursor = {}, 0, nil
+	local i, n = 1, #raw
+	while i <= n do
+		if rawCursor and not plainCursor and i > rawCursor then
+			plainCursor = count
+		end
+		local c = raw:sub(i, i)
+		if c == "|" then
+			local nextChar = raw:sub(i + 1, i + 1)
+			if nextChar == "c" and raw:match("^%x%x%x%x%x%x%x%x", i + 2) then
+				i = i + 10
+			elseif nextChar == "r" then
+				i = i + 2
+			elseif nextChar == "|" then
+				out[#out + 1] = "|"
+				count = count + 1
+				i = i + 2
+			else
+				out[#out + 1] = "|"
+				count = count + 1
+				i = i + 1
+			end
+		else
+			out[#out + 1] = c
+			count = count + 1
+			i = i + 1
+		end
+	end
+	if rawCursor and not plainCursor then
+		plainCursor = count
+	end
+	return table.concat(out), plainCursor
+end
+
+-- Cursor position in a colored text for a position in its plain code.
+function Syntax.RawCursor(raw, plainCursor)
+	local count, i, n = 0, 1, #raw
+	while i <= n and count < plainCursor do
+		local c = raw:sub(i, i)
+		if c == "|" then
+			local nextChar = raw:sub(i + 1, i + 1)
+			if nextChar == "c" and raw:match("^%x%x%x%x%x%x%x%x", i + 2) then
+				i = i + 10
+			elseif nextChar == "r" then
+				i = i + 2
+			elseif nextChar == "|" then
+				count = count + 1
+				i = i + 2
+			else
+				count = count + 1
+				i = i + 1
+			end
+		else
+			count = count + 1
+			i = i + 1
+		end
+	end
+	return i - 1
+end
+
+-- The colored text for plain code; very long code is only escaped.
+function Syntax.Encode(code)
+	if #code > MAX_HIGHLIGHT_LENGTH then
+		return (code:gsub("|", "||"))
+	end
+	return Syntax.Colorize(code)
+end
+
+---------------------------------------------------------------------------
 -- Editor
 ---------------------------------------------------------------------------
 
@@ -162,13 +239,34 @@ function CodeEditor.Attach(editor, status)
 	local editBox = editor:GetEditBox()
 	self.editBox = editBox
 
-	local overlay = editBox:CreateFontString(nil, "OVERLAY")
-	overlay:SetJustifyH("LEFT")
-	overlay:SetJustifyV("TOP")
-	overlay:SetWordWrap(true)
-	if overlay.SetNonSpaceWrap then overlay:SetNonSpaceWrap(true) end
-	overlay:Hide()
-	self.overlay = overlay
+	-- Everyone (the template, the dialog, our callers) gets plain code from GetText and may
+	-- pass plain code to SetText; only the edit box itself holds the colored text.
+	local rawGetText, rawSetText = editBox.GetText, editBox.SetText
+	self.rawGetText, self.rawSetText = rawGetText, rawSetText
+	editBox.GetText = function(box)
+		local raw = rawGetText(box) or ""
+		if self.enabled and not self.plainView then
+			return (Syntax.Decode(raw))
+		end
+		return raw
+	end
+	editBox.SetText = function(box, text)
+		text = tostring(text or "")
+		self.plainView = false
+		if self.enabled then
+			local encoded = Syntax.Encode(text)
+			self.updating = true
+			rawSetText(box, encoded)
+			self.updating = false
+			self.lastLength = #text
+			self:Update(text)
+			return
+		end
+		return rawSetText(box, text)
+	end
+	editBox:HookScript("OnTextChanged", function(box)
+		self:OnTextChanged(box)
+	end)
 
 	local gutter = editBox:CreateFontString(nil, "OVERLAY")
 	gutter:SetJustifyH("RIGHT")
@@ -181,44 +279,36 @@ function CodeEditor.Attach(editor, status)
 	marker:SetColorTexture(1, 0.2, 0.2, 0.25)
 	marker:Hide()
 	self.marker = marker
-
-	editor:RegisterCallback("OnTextChanged", function(_, box)
-		self:OnTextChanged(box)
-	end, self)
 	return self
 end
 
 -- options: enabled (highlighting + checks), args (script arguments for the check, or nil for
 -- a plain chunk), check (false disables the syntax check).
 function CodeEditor:SetMode(options)
+	local text = self.editBox:GetText()
 	self.enabled = options.enabled and true or false
 	self.args = options.args
 	self.checkSyntax = options.check ~= false
 	local editBox = self.editBox
 	local font = editBox:GetFontObject()
-	for _, region in ipairs({ self.overlay, self.gutter }) do
-		if font then region:SetFontObject(font) end
-	end
+	if font then self.gutter:SetFontObject(font) end
 	if self.enabled then
 		self.editor:SetTextInsets(GUTTER_WIDTH + 6, 4, 2, 2)
 	else
 		self.editor:SetTextInsets(0, 0, 0, 0)
 	end
-	local left, right, top = editBox:GetTextInsets()
-	self.overlay:ClearAllPoints()
-	self.overlay:SetPoint("TOPLEFT", left or 0, -(top or 0))
-	self.overlay:SetPoint("TOPRIGHT", -(right or 0), -(top or 0))
+	local _, _, top = editBox:GetTextInsets()
 	self.gutter:ClearAllPoints()
 	self.gutter:SetPoint("TOPRIGHT", editBox, "TOPLEFT", GUTTER_WIDTH, -(top or 0))
 	self.gutter:SetWidth(GUTTER_WIDTH)
-	self.gutter:SetShown(self.enabled)
 	self.status:SetText("")
 	self.marker:Hide()
-	self.lastLength = nil
-	self:Refresh()
+	self.gutter:SetShown(self.enabled)
+	-- Re-apply the current text in the new mode.
+	editBox:SetText(text)
 end
 
--- Code editors indent with spaces so the overlay lines up with the edit box.
+-- Code editors indent with spaces (like the rest of the editor's output).
 function CodeEditor:PrepareText(text)
 	if self.enabled then
 		return (text:gsub("\t", INDENT))
@@ -233,51 +323,62 @@ function CodeEditor:OnTab()
 	end
 end
 
+-- Shows the uncolored code so "select all + Ctrl+C" copies exactly the code (the colored
+-- text would copy its color codes). Typing colors it again.
+function CodeEditor:ShowPlain()
+	if not self.enabled or self.plainView then return end
+	local code = self.editBox:GetText()
+	self.updating = true
+	self.rawSetText(self.editBox, code)
+	self.updating = false
+	self.plainView = true
+end
+
+-- After every change: recolor, keep the cursor on the same code position and indent new lines.
 function CodeEditor:OnTextChanged(box)
-	if not self.enabled then return end
-	local text = box:GetText() or ""
+	if not self.enabled or self.updating then return end
+	local raw = self.rawGetText(box) or ""
+	local code, cursor
+	if self.plainView then
+		-- The plain view holds the code as it is: no color codes to strip.
+		code, cursor = raw, box:GetCursorPosition()
+		self.plainView = false
+	else
+		code, cursor = Syntax.Decode(raw, box:GetCursorPosition())
+	end
 	-- Enter inserted a newline right before the cursor: carry the indentation over.
-	if not self.indenting and self.lastLength and #text == self.lastLength + 1 then
-		local cursor = box:GetCursorPosition()
-		if text:sub(cursor, cursor) == "\n" then
-			local before = text:sub(1, cursor - 1)
-			local previous = before:match("([^\n]*)$") or ""
-			local indent = LeadingIndent(previous) .. (OpensBlock(previous) and INDENT or "")
-			if indent ~= "" then
-				self.indenting = true
-				box:Insert(indent)
-				self.indenting = false
-				return
-			end
+	if self.lastLength and #code == self.lastLength + 1 and code:sub(cursor, cursor) == "\n" then
+		local previous = code:sub(1, cursor - 1):match("([^\n]*)$") or ""
+		local indent = LeadingIndent(previous) .. (OpensBlock(previous) and INDENT or "")
+		if indent ~= "" then
+			code = code:sub(1, cursor) .. indent .. code:sub(cursor + 1)
+			cursor = cursor + #indent
 		end
 	end
-	self.lastLength = #text
-	self:Refresh()
+	self.lastLength = #code
+	local encoded = Syntax.Encode(code)
+	if encoded ~= raw then
+		self.updating = true
+		self.rawSetText(box, encoded)
+		box:SetCursorPosition(Syntax.RawCursor(encoded, cursor))
+		self.updating = false
+	end
+	self:Update(code)
 end
 
 function CodeEditor:Refresh()
-	local box = self.editBox
-	local text = box:GetText() or ""
-	self.lastLength = #text
+	self:Update(self.editBox:GetText() or "")
+end
+
+-- Line numbers and the syntax status for the plain code.
+function CodeEditor:Update(code)
 	if not self.enabled then
-		box:SetTextColor(1, 1, 1, 1)
-		self.overlay:Hide()
 		self.gutter:Hide()
 		self.marker:Hide()
 		return
 	end
-
-	-- Very long texts stay plain; coloring them on every key press would stutter.
-	if #text <= MAX_HIGHLIGHT_LENGTH then
-		box:SetTextColor(1, 1, 1, 0)
-		self.overlay:SetText(Syntax.Colorize(text))
-		self.overlay:Show()
-	else
-		box:SetTextColor(1, 1, 1, 1)
-		self.overlay:Hide()
-	end
-
-	local lines = select(2, text:gsub("\n", "\n")) + 1
+	local box = self.editBox
+	local lines = select(2, code:gsub("\n", "\n")) + 1
 	local numbers = {}
 	for i = 1, lines do
 		numbers[i] = i
@@ -290,7 +391,7 @@ function CodeEditor:Refresh()
 		self.status:SetText("")
 		return
 	end
-	local ok, line, message = Syntax.Check(text, self.args)
+	local ok, line, message = Syntax.Check(code, self.args)
 	if ok then
 		self.status:SetText("|cff40ff40" .. L["Syntax OK"] .. "|r")
 		return
