@@ -16,6 +16,8 @@ local RIGHT_WIDTH = 280
 local TOOLBAR_TOP = -28
 local BODY_TOP = -60
 local STATUS_HEIGHT = 22
+-- Top tabs are 32 px high, but only their lower 24 px are drawn.
+local LEFT_TABS_HEIGHT = 26
 
 ---------------------------------------------------------------------------
 -- Window
@@ -245,14 +247,38 @@ end
 function Editor:CreateBody()
 	local frame = self.frame
 
-	local palette = ns.Panels:CreatePalette(frame)
-	palette:SetPoint("TOPLEFT", 8, BODY_TOP)
-	palette:SetSize(LEFT_WIDTH, palette.height)
+	-- Left column: elements and layers as two top tabs sharing the full height.
+	local left = CreateFrame("Frame", nil, frame)
+	left:SetPoint("TOPLEFT", 8, BODY_TOP - LEFT_TABS_HEIGHT)
+	left:SetPoint("BOTTOMLEFT", 8, STATUS_HEIGHT + 6)
+	left:SetWidth(LEFT_WIDTH)
+	self.left = left
 
-	local tree = ns.Panels:CreateTree(frame)
-	tree:SetPoint("TOPLEFT", palette, "BOTTOMLEFT", 0, -4)
-	tree:SetPoint("BOTTOMLEFT", 8, STATUS_HEIGHT + 6)
-	tree:SetWidth(LEFT_WIDTH)
+	local palette = ns.Panels:CreatePalette(left)
+	palette:SetAllPoints()
+	local tree = ns.Panels:CreateTree(left)
+	tree:SetAllPoints()
+	self.leftPanels = { palette, tree }
+
+	left.Tabs = {}
+	for i, label in ipairs({ L["Elements"], L["Layers"] }) do
+		local tab = CreateFrame("Button", nil, left, "PanelTopTabButtonTemplate")
+		left.Tabs[i] = tab
+		tab:SetID(i)
+		tab:SetText(label)
+		if i == 1 then
+			tab:SetPoint("BOTTOMLEFT", left, "TOPLEFT", 6, -2)
+		else
+			tab:SetPoint("BOTTOMLEFT", left.Tabs[i - 1], "BOTTOMRIGHT", 1, 0)
+		end
+		PanelTemplates_TabResize(tab, 0)
+		tab:SetScript("OnClick", function(self)
+			PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB)
+			Editor:SelectLeftTab(self:GetID())
+		end)
+	end
+	PanelTemplates_SetNumTabs(left, #left.Tabs)
+	self:SelectLeftTab(ns.db.settings.leftTab)
 
 	local inspector = ns.Inspector:Create(frame)
 	inspector:SetPoint("TOPRIGHT", -8, BODY_TOP)
@@ -260,11 +286,20 @@ function Editor:CreateBody()
 	inspector:SetWidth(RIGHT_WIDTH)
 
 	local canvasInset = W.Inset(frame)
-	canvasInset:SetPoint("TOPLEFT", palette, "TOPRIGHT", 6, 0)
+	canvasInset:SetPoint("TOPLEFT", 8 + LEFT_WIDTH + 6, BODY_TOP)
 	canvasInset:SetPoint("BOTTOMRIGHT", inspector, "BOTTOMLEFT", -6, 0)
 	ns.Canvas:Create(canvasInset)
 	ns.Canvas.clip:SetPoint("TOPLEFT", 3, -3)
 	ns.Canvas.clip:SetPoint("BOTTOMRIGHT", -3, 3)
+end
+
+function Editor:SelectLeftTab(index)
+	index = (index == 2) and 2 or 1
+	ns.db.settings.leftTab = index
+	PanelTemplates_SetTab(self.left, index)
+	for i, panel in ipairs(self.leftPanels) do
+		panel:SetShown(i == index)
+	end
 end
 
 function Editor:CreateStatusBar()

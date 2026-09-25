@@ -18,8 +18,8 @@ Open the editor with `/ffb` (or `/framebuilder`, or through the addon compartmen
 | Area | Purpose |
 |---|---|
 | Toolbar | Projects, undo/redo, grid/snap, zoom, export, preview |
-| Elements | Palette: click adds to the selected frame, drag places it at the cursor |
-| Layers | Tree of all elements; order = draw order (lower = in front) |
+| Elements (tab, left) | Palette: click adds to the selected frame, drag places it at the cursor |
+| Layers (tab, left) | Tree of all elements; order = draw order (lower = in front) |
 | Canvas | Represents `UIParent` (the blue outline is your screen) |
 | Properties | Name, parent, anchors, size, appearance and scripts of the selected element, in collapsible sections (remembered) |
 

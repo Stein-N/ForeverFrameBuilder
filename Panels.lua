@@ -1,5 +1,5 @@
 -- Forever Frame Builder
--- Panels: the element palette and the layer tree on the left side of the editor.
+-- Panels: the element palette and the layer tree, shown as tabs on the left side of the editor.
 
 local _, ns = ...
 local L = ns.L
@@ -21,8 +21,6 @@ local TREE_INDENT = 12
 
 function Panels:CreatePalette(parent)
 	local frame = W.Inset(parent)
-	local title = W.Label(frame, L["Elements"])
-	title:SetPoint("TOPLEFT", 8, -7)
 
 	self.paletteButtons = {}
 	for i, elementType in ipairs(ns.ElementOrder) do
@@ -30,7 +28,7 @@ function Panels:CreatePalette(parent)
 		local button = W.Button(frame, def.label, PALETTE_BUTTON_WIDTH)
 		local column = (i - 1) % PALETTE_COLUMNS
 		local row = math.floor((i - 1) / PALETTE_COLUMNS)
-		button:SetPoint("TOPLEFT", 7 + column * (PALETTE_BUTTON_WIDTH + 4), -24 - row * PALETTE_ROW_HEIGHT)
+		button:SetPoint("TOPLEFT", 7 + column * (PALETTE_BUTTON_WIDTH + 4), -8 - row * PALETTE_ROW_HEIGHT)
 		button:RegisterForDrag("LeftButton")
 		button:SetScript("OnClick", function()
 			if not button.dragging then
@@ -50,8 +48,6 @@ function Panels:CreatePalette(parent)
 		table.insert(self.paletteButtons, button)
 	end
 
-	local rows = math.ceil(#ns.ElementOrder / PALETTE_COLUMNS)
-	frame.height = 24 + rows * PALETTE_ROW_HEIGHT + 6
 	self.palette = frame
 	return frame
 end
@@ -62,11 +58,9 @@ end
 
 function Panels:CreateTree(parent)
 	local frame = W.Inset(parent)
-	local title = W.Label(frame, L["Layers"])
-	title:SetPoint("TOPLEFT", 8, -7)
 
 	local host = CreateFrame("Frame", nil, frame)
-	host:SetPoint("TOPLEFT", 0, -22)
+	host:SetPoint("TOPLEFT", 0, -4)
 	host:SetPoint("BOTTOMRIGHT", 0, 30)
 	local _, content = W.ScrollArea(host)
 	self.treeContent = content
