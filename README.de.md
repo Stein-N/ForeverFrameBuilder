@@ -119,14 +119,12 @@ Jedes Element hat Skript-Slots (`OnLoad`, `OnClick`, `OnValueChanged` …). Im S
 andere Elemente erreichst du über `E.<Name>`, z. B. `E.MainFrame:Hide()`. **Vorschau** macht alles aktiv:
 Buttons lassen sich klicken, Skripte laufen, verschiebbare Frames lassen sich ziehen. „Bearbeiten“ stellt den Entwurf wieder her.
 
-Der Skript-Editor ist ein Code-Editor: Lua-Syntax-Highlighting (Schlüsselwörter, Strings, Kommentare, Zahlen,
-Funktionsaufrufe, `self`/`E`/`true`/`false`/`nil`), Zeilennummern, eine Live-Syntaxprüfung mit „Syntax OK“ oder dem
-Fehler samt Zeile (die Zeilennummer wird rot markiert), Tab fügt vier Leerzeichen ein und Enter übernimmt die Einrückung
-(eine Stufe mehr nach `then`, `do`, `function`, `repeat`, `{`). Skripte mit Syntaxfehlern lassen sich nicht speichern.
-Wie bei *For All Indents And Purposes* stehen die Farben direkt im Text des Eingabefelds (eingefärbt wird, sobald
-das Tippen 0,2 s pausiert); „Alles markieren“ schaltet auf
-den ungefärbten Code um, damit Strg+C genau den Code kopiert (beim Weitertippen wird wieder eingefärbt). Die
-Lua-Export-Ansicht bleibt zum Kopieren ungefärbt.
+Der Skript-Editor ist ein Lua-Code-Editor auf Basis der eingebetteten Bibliothek *For All Indents And Purposes*
+(`Libs/ForAllIndentsAndPurposes`, von kristofer.karlsson): Syntax-Highlighting und automatische Einrückung (Tab rückt
+den Code neu ein). Zusätzlich zeigt der Editor Zeilennummern und eine Live-Syntaxprüfung mit „Syntax OK“ oder dem Fehler
+samt Zeile (die Zeilennummer wird rot markiert); Skripte mit Syntaxfehlern lassen sich nicht speichern. Die Farben stehen
+im Text des Eingabefelds, daher schaltet „Alles markieren“ auf den ungefärbten Code um, damit Strg+C genau den Code
+kopiert (beim Weitertippen wird wieder eingefärbt). Die Lua-Export-Ansicht bleibt zum Kopieren ungefärbt.
 
 ## Export
 

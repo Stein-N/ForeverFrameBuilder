@@ -8,6 +8,10 @@
 ## IconTexture: Interface\Icons\INV_Misc_Wrench_01
 ## AddonCompartmentFunc: ForeverFrameBuilder_OnAddonCompartmentClick
 
+# For All Indents And Purposes (Lua indentation + syntax highlighting), embedded as the
+# library asks: first in the file list.
+Libs\ForAllIndentsAndPurposes\indent.lua
+
 # Localization: enUS is the base, every other file overrides only what it translates
 Locales\enUS.lua
 Locales\deDE.lua

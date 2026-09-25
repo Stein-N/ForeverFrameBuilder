@@ -130,12 +130,12 @@ Every element has script slots (`OnLoad`, `OnClick`, `OnValueChanged`, …). Ins
 other elements are reachable through `E.<Name>`, e.g. `E.MainFrame:Hide()`. **Preview** makes everything live:
 buttons can be clicked, scripts run and movable frames can be dragged. "Edit mode" restores the design.
 
-The script editor is a code editor: Lua syntax highlighting (keywords, strings, comments, numbers, function calls,
-`self`/`E`/`true`/`false`/`nil`), line numbers, a live syntax check that shows "Syntax OK" or the error with its line
-(the line number is marked red), Tab inserts four spaces and Enter keeps the indentation (one level more after `then`, `do`,
-`function`, `repeat`, `{`). Scripts with syntax errors can't be saved. Like *For All Indents And Purposes*, the colors
-are written into the edit box text once typing pauses (0.2 s); "Select all" switches to the uncolored code so Ctrl+C copies exactly the code
-(typing colors it again). The Lua export view stays uncolored for copying.
+The script editor is a Lua code editor based on the embedded library *For All Indents And Purposes*
+(`Libs/ForAllIndentsAndPurposes`, by kristofer.karlsson): syntax highlighting and automatic indentation (Tab
+re-indents the code). On top of it the editor shows line numbers and a live syntax check with "Syntax OK" or the error
+and its line (the line number is marked red); scripts with syntax errors can't be saved. The colors are part of the
+edit box text, so "Select all" switches to the uncolored code and Ctrl+C copies exactly the code (typing colors it
+again). The Lua export view stays uncolored for copying.
 
 ## Export
 
