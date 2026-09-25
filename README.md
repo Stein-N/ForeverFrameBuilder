@@ -19,7 +19,7 @@ Open the editor with `/ffb` (or `/framebuilder`, or through the addon compartmen
 |---|---|
 | Toolbar | Projects, undo/redo, grid/snap, zoom, export, preview |
 | Elements (tab, left) | Palette in foldable groups (containers, controls, display, Blizzard templates): click adds to the selected frame, drag places it at the cursor |
-| Layers (tab, left) | Tree of all elements; order = draw order (lower = in front) |
+| Layers (tab, left) | Tree of all elements; order = draw order (lower = in front). Elements with children fold with +/- (hidden count shown); "Expand all"/"Collapse all" in the right-click menu |
 | Canvas | Represents `UIParent` (the blue outline is your screen) |
 | Properties | Name, parent, anchors, size, appearance and scripts of the selected element, in collapsible sections (remembered) |
 

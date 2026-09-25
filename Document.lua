@@ -5,6 +5,7 @@
 -- A node is { id, type, name, parent, children, point, relPoint, x, y, w, h, fill,
 --             alpha, shown, strata, globalName, props = {}, scripts = {} }.
 -- fill = true anchors the element to all edges of its parent instead of point/size.
+-- treeCollapsed = true folds the element's children in the layer tree (view state only).
 -- Anchors: point/relTo/relPoint/x/y is the first anchor, node.anchors holds any further ones
 -- as { point, target, relPoint, x, y }. relTo/target 0 means the parent, otherwise an element id.
 --
@@ -294,7 +295,17 @@ local function StepHistory(self, from, to)
 	local snap = table.remove(from)
 	if not snap then return end
 	table.insert(to, Snapshot(self.project, self.selected))
+	-- Folding in the layer tree is view state: undo/redo must not change it.
+	local folded = {}
+	for id, node in pairs(self.project.nodes) do
+		folded[id] = node.treeCollapsed
+	end
 	Restore(self.project, snap)
+	for id, node in pairs(self.project.nodes) do
+		if folded[id] ~= nil or node.treeCollapsed ~= nil then
+			node.treeCollapsed = folded[id]
+		end
+	end
 	self.mergeKey = nil
 	ns.Fire("STRUCTURE_CHANGED")
 	self:Select(self:Get(snap.selected) and snap.selected or nil)

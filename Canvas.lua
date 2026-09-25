@@ -947,6 +947,11 @@ function Canvas:ShowContextMenu(owner, id)
 		root:CreateButton(L["Copy"], function() Doc:Copy(id) end)
 		local paste = root:CreateButton(L["Paste"], function() Doc:Paste() end)
 		paste:SetEnabled(Doc:HasClipboard())
+		if #node.children > 0 then
+			root:CreateDivider()
+			root:CreateButton(L["Expand all"], function() ns.Panels:SetSubtreeCollapsed(id, false) end)
+			root:CreateButton(L["Collapse all"], function() ns.Panels:SetSubtreeCollapsed(id, true) end)
+		end
 		root:CreateDivider()
 		root:CreateButton(L["Bring forward"], function() Doc:Reorder(id, 1) end)
 		root:CreateButton(L["Send backward"], function() Doc:Reorder(id, -1) end)

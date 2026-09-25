@@ -13,6 +13,7 @@ local PALETTE_ROW_HEIGHT = 24
 local PALETTE_BUTTON_INDENT = 18
 local TREE_ROW_HEIGHT = 18
 local TREE_INDENT = 12
+local TREE_TOGGLE_WIDTH = 16
 
 ---------------------------------------------------------------------------
 -- Palette
@@ -127,8 +128,8 @@ function Panels:CreateTree(parent)
 	local host = CreateFrame("Frame", nil, frame)
 	host:SetPoint("TOPLEFT", 0, -4)
 	host:SetPoint("BOTTOMRIGHT", 0, 30)
-	local _, content = W.ScrollArea(host)
-	self.treeContent = content
+	local scroll, content = W.ScrollArea(host)
+	self.treeScroll, self.treeContent = scroll, content
 	self.treeRows = {}
 
 	self.treeEmpty = W.Label(host, L["No elements yet.\nDrag one from the palette onto the canvas."], "GameFontDisableSmall")
@@ -174,6 +175,18 @@ function Panels:CreateTreeRow()
 	row.text:SetPoint("RIGHT", -4, 0)
 	row.text:SetWordWrap(false)
 
+	-- +/- for elements with children. Its clicks must not also select the row.
+	local toggle = CreateFrame("Button", nil, row, "CollapseButtonTemplate")
+	toggle:SetSize(TREE_TOGGLE_WIDTH, TREE_ROW_HEIGHT)
+	if toggle.SetPropagateMouseClicks then
+		toggle:SetPropagateMouseClicks(false)
+	end
+	toggle:SetScript("OnClick", function()
+		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+		Panels:ToggleTreeNode(row.id)
+	end)
+	row.toggle = toggle
+
 	row:SetScript("OnClick", function(self, button)
 		Doc:Select(self.id)
 		if button == "RightButton" then
@@ -183,12 +196,82 @@ function Panels:CreateTreeRow()
 	return row
 end
 
+local function CountDescendants(node)
+	local count = 0
+	for _, childId in ipairs(node.children) do
+		local child = Doc:Get(childId)
+		if child then
+			count = count + 1 + CountDescendants(child)
+		end
+	end
+	return count
+end
+
+-- Visible tree rows: children of folded elements are skipped.
+local function CollectEntries(list, parentId, depth)
+	for _, id in ipairs(Doc:ChildList(parentId)) do
+		local node = Doc:Get(id)
+		if node then
+			table.insert(list, { node = node, depth = depth })
+			if not node.treeCollapsed then
+				CollectEntries(list, id, depth + 1)
+			end
+		end
+	end
+	return list
+end
+
+-- A selection inside a part that gets folded moves to the folded element, so folding
+-- isn't undone right away by revealing the selection again.
+local function KeepSelectionVisible(id)
+	if Doc.selected and Doc:IsAncestor(id, Doc.selected) then
+		Doc:Select(id)
+	end
+end
+
+function Panels:ToggleTreeNode(id)
+	local node = Doc:Get(id)
+	if not node then return end
+	node.treeCollapsed = not node.treeCollapsed or nil
+	if node.treeCollapsed then
+		KeepSelectionVisible(id)
+	end
+	self:RefreshTree()
+end
+
+-- Folds or unfolds an element and every element below it.
+function Panels:SetSubtreeCollapsed(id, collapsed)
+	local node = Doc:Get(id)
+	if not node then return end
+	local function Apply(current)
+		if #current.children > 0 then
+			current.treeCollapsed = collapsed or nil
+		end
+		for _, childId in ipairs(current.children) do
+			local child = Doc:Get(childId)
+			if child then Apply(child) end
+		end
+	end
+	Apply(node)
+	if collapsed then
+		KeepSelectionVisible(id)
+	end
+	self:RefreshTree()
+end
+
+-- Unfolds the ancestors of the selected element so its row is shown.
+function Panels:RevealSelection()
+	local node = Doc:GetSelected()
+	local parent = node and Doc:Get(node.parent)
+	while parent do
+		parent.treeCollapsed = nil
+		parent = Doc:Get(parent.parent)
+	end
+end
+
 function Panels:RefreshTree()
 	if not self.treeContent then return end
-	local entries = {}
-	Doc:Walk(function(node, depth)
-		table.insert(entries, { node = node, depth = depth })
-	end)
+	local entries = CollectEntries({}, nil, 0)
 
 	for i, entry in ipairs(entries) do
 		local row = self.treeRows[i]
@@ -201,8 +284,18 @@ function Panels:RefreshTree()
 		row:ClearAllPoints()
 		row:SetPoint("TOPLEFT", self.treeContent, "TOPLEFT", 0, -(i - 1) * TREE_ROW_HEIGHT)
 		row:SetPoint("RIGHT", self.treeContent, "RIGHT")
-		row.text:SetPoint("LEFT", 4 + entry.depth * TREE_INDENT, 0)
-		row.text:SetText(("%s |cff888888%s|r"):format(node.name, ns.Elements[node.type].label))
+		local indent = 2 + entry.depth * TREE_INDENT
+		local hasChildren = #node.children > 0
+		row.toggle:ClearAllPoints()
+		row.toggle:SetPoint("LEFT", indent, 0)
+		row.toggle:SetShown(hasChildren)
+		if hasChildren then
+			row.toggle:UpdateCollapsedState(node.treeCollapsed and true or false)
+		end
+		row.text:SetPoint("LEFT", indent + TREE_TOGGLE_WIDTH + 2, 0)
+		local hidden = node.treeCollapsed and CountDescendants(node) or 0
+		row.text:SetText(("%s |cff888888%s%s|r"):format(node.name, ns.Elements[node.type].label,
+			hidden > 0 and (" (" .. hidden .. ")") or ""))
 		row.text:SetAlpha(node.shown and 1 or 0.45)
 		row.selected:SetShown(node.id == Doc.selected)
 		row:Show()
@@ -217,6 +310,25 @@ function Panels:RefreshTree()
 	for _, button in ipairs(self.treeButtons) do
 		button:SetEnabled(hasSelection)
 	end
+	self:ScrollToSelection(entries)
+end
+
+-- Scrolls the layer list so the selected row is inside the visible area.
+function Panels:ScrollToSelection(entries)
+	local scroll = self.treeScroll
+	if not scroll or not Doc.selected then return end
+	for i, entry in ipairs(entries) do
+		if entry.node.id == Doc.selected then
+			local top, bottom = (i - 1) * TREE_ROW_HEIGHT, i * TREE_ROW_HEIGHT
+			local current, height = scroll:GetVerticalScroll() or 0, scroll:GetHeight() or 0
+			if height > 0 and top < current then
+				scroll:SetVerticalScroll(top)
+			elseif height > 0 and bottom > current + height then
+				scroll:SetVerticalScroll(bottom - height)
+			end
+			return
+		end
+	end
 end
 
 local function RefreshTree()
@@ -225,7 +337,11 @@ end
 
 ns.On("PROJECT_CHANGED", RefreshTree)
 ns.On("STRUCTURE_CHANGED", RefreshTree)
-ns.On("SELECTION_CHANGED", RefreshTree)
+ns.On("SELECTION_CHANGED", function()
+	-- Selecting a hidden element (e.g. on the canvas or a new child) unfolds its parents.
+	Panels:RevealSelection()
+	RefreshTree()
+end)
 ns.On("NODE_CHANGED", function(_, key)
 	if key == "name" or key == "shown" then
 		RefreshTree()

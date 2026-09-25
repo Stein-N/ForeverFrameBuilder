@@ -11,7 +11,7 @@ Drag-&-Drop-Editor für Ingame-Frames, ähnlich einem Website-Builder. Öffnen m
 |---|---|
 | Toolbar | Projekte, Rückgängig/Wiederholen, Raster/Einrasten, Zoom, Export, Vorschau |
 | Elemente (Reiter, links) | Palette in einklappbaren Gruppen (Container, Bedienelemente, Anzeige, Blizzard-Templates): klicken fügt zum ausgewählten Frame hinzu, ziehen legt es an die Cursorposition |
-| Ebenen (Reiter, links) | Baum aller Elemente; Reihenfolge = Zeichenreihenfolge (unten = vorne) |
+| Ebenen (Reiter, links) | Baum aller Elemente; Reihenfolge = Zeichenreihenfolge (unten = vorne). Elemente mit Kindern lassen sich mit +/– einklappen (Anzahl versteckter Elemente wird angezeigt); „Alle aufklappen/zuklappen“ im Rechtsklickmenü |
 | Arbeitsfläche | Entspricht `UIParent` (der blaue Rahmen ist dein Bildschirm) |
 | Eigenschaften | Name, Eltern-Element, Anker, Größe, Aussehen und Skripte des ausgewählten Elements, in einklappbaren Bereichen (werden gemerkt) |
 
