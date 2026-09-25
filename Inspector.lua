@@ -518,6 +518,8 @@ function Inspector:BuildFields(id)
 			if field.kind == "template" then
 				field.set = function(value, info, catalog)
 					value = strtrim(value or "")
+					local previous = ns.GetCatalogEntry(N().props.template)
+					catalog = catalog or ns.GetCatalogEntry(value)
 					local entry = info or ns.GetTemplateInfo(value)
 					local changes = { template = value }
 					if entry then
@@ -528,9 +530,20 @@ function Inspector:BuildFields(id)
 					end
 					Doc:SetMany(id, changes)
 					-- Catalog templates bring the OnLoad code they need; it also runs while editing.
-					if catalog and catalog[5] and (N().scripts.OnLoad or "") == "" then
-						Doc:SetScript(id, "OnLoad", catalog[5])
-						Doc:Set(id, "editorOnLoad", true, true)
+					-- Setup code of the previous template is replaced as long as it is unchanged,
+					-- otherwise it would run on a template it wasn't written for.
+					local current = strtrim(N().scripts.OnLoad or "")
+					local fromPrevious = previous and previous[5] and current == strtrim(previous[5])
+					if current == "" or fromPrevious then
+						local setup = catalog and catalog[5]
+						if setup then
+							Doc:SetScript(id, "OnLoad", setup)
+							Doc:Set(id, "editorOnLoad", true, true)
+						elseif fromPrevious then
+							Doc:SetScript(id, "OnLoad", "")
+						end
+					elseif previous ~= catalog then
+						ns.Print(L["The OnLoad script of %s was kept; check that it fits %s."], N().name, value)
 					end
 					-- No size in the XML: use what the template set in its OnLoad, if anything.
 					if info and not changes.w and not N().fill then
