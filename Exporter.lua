@@ -60,6 +60,7 @@ function Exporter:ToLua()
 	out("")
 
 	local withScripts, afterChildren = {}, {}
+	local created, deferredAnchors = {}, {}
 	Doc:Walk(function(node)
 		local def = ns.Elements[node.type]
 		local v = ElementVar(node)
@@ -81,8 +82,24 @@ function Exporter:ToLua()
 			out(("%s:SetAllPoints(%s)"):format(v, parentVar))
 		else
 			out(("%s:SetSize(%s, %s)"):format(v, ns.LuaNum(node.w), ns.LuaNum(node.h)))
-			out(("%s:SetPoint(%s, %s, %s, %s, %s)"):format(v, ns.LuaStr(node.point), parentVar,
-				ns.LuaStr(node.relPoint), ns.LuaNum(node.x), ns.LuaNum(node.y)))
+			-- Anchors to elements that are created later can only be set once all exist.
+			local lines, later = {}, false
+			for _, anchor in ipairs(Doc.GetAnchors(node)) do
+				local target = Doc:ResolveAnchorTarget(node, anchor.target)
+				local relative = target and ElementVar(Doc:Get(target)) or parentVar
+				if target and not created[target] then
+					later = true
+				end
+				table.insert(lines, ("%s:SetPoint(%s, %s, %s, %s, %s)"):format(v, ns.LuaStr(anchor.point), relative,
+					ns.LuaStr(anchor.relPoint), ns.LuaNum(anchor.x), ns.LuaNum(anchor.y)))
+			end
+			for _, line in ipairs(lines) do
+				if later then
+					table.insert(deferredAnchors, line)
+				else
+					out(line)
+				end
+			end
 		end
 		if node.strata ~= "" and not def.region then
 			out(v .. ":SetFrameStrata(" .. ns.LuaStr(node.strata) .. ")")
@@ -101,7 +118,16 @@ function Exporter:ToLua()
 		if def.ExportAfterChildren then
 			table.insert(afterChildren, node)
 		end
+		created[node.id] = true
 	end)
+
+	if #deferredAnchors > 0 then
+		out("-- Anchors to elements created further down")
+		for _, line in ipairs(deferredAnchors) do
+			out(line)
+		end
+		out("")
+	end
 
 	for _, node in ipairs(afterChildren) do
 		local childVars = {}

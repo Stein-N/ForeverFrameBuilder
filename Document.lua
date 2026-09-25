@@ -5,6 +5,8 @@
 -- A node is { id, type, name, parent, children, point, relPoint, x, y, w, h, fill,
 --             alpha, shown, strata, globalName, props = {}, scripts = {} }.
 -- fill = true anchors the element to all edges of its parent instead of point/size.
+-- Anchors: point/relTo/relPoint/x/y is the first anchor, node.anchors holds any further ones
+-- as { point, target, relPoint, x, y }. relTo/target 0 means the parent, otherwise an element id.
 --
 -- Events fired through ns.Fire:
 --   PROJECT_CHANGED              another project was loaded
@@ -26,6 +28,7 @@ local MERGE_WINDOW = 1.0
 local NODE_KEYS = {
 	name = true, globalName = true, point = true, relPoint = true,
 	x = true, y = true, w = true, h = true, alpha = true, shown = true, strata = true, fill = true,
+	relTo = true, anchors = true,
 }
 Doc.NODE_KEYS = NODE_KEYS
 
@@ -139,6 +142,20 @@ function Doc:Normalize()
 		node.point = node.point or "CENTER"
 		node.relPoint = node.relPoint or node.point
 		node.x, node.y = node.x or 0, node.y or 0
+		node.relTo = tonumber(node.relTo) or 0
+		local anchors = {}
+		for _, anchor in ipairs(type(node.anchors) == "table" and node.anchors or {}) do
+			if type(anchor) == "table" and ns.POINT_FACTORS[anchor.point] then
+				table.insert(anchors, {
+					point = anchor.point,
+					target = tonumber(anchor.target) or 0,
+					relPoint = ns.POINT_FACTORS[anchor.relPoint] and anchor.relPoint or anchor.point,
+					x = tonumber(anchor.x) or 0,
+					y = tonumber(anchor.y) or 0,
+				})
+			end
+		end
+		node.anchors = anchors
 		local def = ns.Elements[node.type]
 		node.w, node.h = node.w or def.width, node.h or def.height
 		node.alpha = node.alpha or 1
@@ -325,7 +342,7 @@ local function CreateNode(self, elementType, parentId, fields, props, baseName)
 		parent = parentId,
 		children = {},
 		point = "CENTER", relPoint = "CENTER", x = 0, y = 0,
-		w = def.width, h = def.height, fill = false,
+		w = def.width, h = def.height, fill = false, relTo = 0, anchors = {},
 		alpha = 1, shown = true, strata = "", globalName = "",
 		props = ns.DefaultProps(elementType),
 		scripts = {},
@@ -373,6 +390,12 @@ function Doc:Remove(id)
 	local node = self:Get(id)
 	if not node then return end
 	self:Checkpoint()
+	-- Elements anchored to the removed subtree are re-anchored to their parent in place.
+	local removed = { [id] = true }
+	self:Walk(function(child) removed[child.id] = true end, id)
+	if ns.Canvas and ns.Canvas.DetachAnchors then
+		ns.Canvas:DetachAnchors(removed)
+	end
 	tDeleteItem(self:ChildList(node.parent), id)
 	DeleteRecursive(self.project.nodes, id)
 	if not self:Get(self.selected) then
@@ -407,6 +430,11 @@ function Doc:InsertSubtree(clip, parentId, offset, afterId)
 		for i, childId in ipairs(node.children) do
 			node.children[i] = idMap[childId]
 		end
+		-- Anchors to elements inside the copy follow the copy; others keep their target.
+		node.relTo = idMap[node.relTo] or node.relTo
+		for _, anchor in ipairs(node.anchors or {}) do
+			anchor.target = idMap[anchor.target] or anchor.target
+		end
 		project.nodes[node.id] = node
 	end
 	-- Names are made unique afterwards so the copies don't collide with each other.
@@ -420,8 +448,9 @@ function Doc:InsertSubtree(clip, parentId, offset, afterId)
 	local rootNode = project.nodes[idMap[clip.root]]
 	rootNode.parent = parentId
 	if offset then
-		rootNode.x = rootNode.x + offset
-		rootNode.y = rootNode.y - offset
+		for field, value in pairs(Doc.ShiftAnchors(rootNode, offset, -offset)) do
+			rootNode[field] = value
+		end
 	end
 	local list = self:ChildList(parentId)
 	local index = afterId and tIndexOf(list, afterId)
@@ -548,4 +577,88 @@ function Doc:SetScript(id, scriptName, code)
 	self:Checkpoint()
 	node.scripts[scriptName] = code ~= "" and code or nil
 	ns.Fire("NODE_CHANGED", id, "scripts")
+end
+
+---------------------------------------------------------------------------
+-- Anchors
+---------------------------------------------------------------------------
+
+-- All anchors of a node as a fresh list; entry 1 is the primary anchor.
+function Doc.GetAnchors(node)
+	local list = { { point = node.point, target = node.relTo or 0, relPoint = node.relPoint, x = node.x, y = node.y } }
+	for _, anchor in ipairs(node.anchors or {}) do
+		table.insert(list, CopyTable(anchor))
+	end
+	return list
+end
+
+-- Node fields for a list produced by GetAnchors (for SetMany / SetParent).
+function Doc.AnchorFields(list)
+	local primary = list[1]
+	local extra = {}
+	for i = 2, #list do
+		table.insert(extra, CopyTable(list[i]))
+	end
+	return {
+		point = primary.point, relTo = primary.target or 0, relPoint = primary.relPoint,
+		x = primary.x, y = primary.y, anchors = extra,
+	}
+end
+
+-- Moves every anchor by the same offset.
+function Doc.ShiftAnchors(node, dx, dy)
+	local list = Doc.GetAnchors(node)
+	for _, anchor in ipairs(list) do
+		anchor.x = anchor.x + dx
+		anchor.y = anchor.y + dy
+	end
+	return Doc.AnchorFields(list)
+end
+
+function Doc:SetAnchors(id, list, noCheckpoint, mergeKey)
+	self:SetMany(id, Doc.AnchorFields(list), noCheckpoint, mergeKey)
+end
+
+-- The element ids an element's position depends on (its anchor targets; 0 = parent).
+local function Dependencies(self, node)
+	local deps = {}
+	if node.fill then
+		if node.parent then table.insert(deps, node.parent) end
+		return deps
+	end
+	for _, anchor in ipairs(Doc.GetAnchors(node)) do
+		local target = anchor.target ~= 0 and self:Get(anchor.target) and anchor.target or node.parent
+		if target then table.insert(deps, target) end
+	end
+	return deps
+end
+
+-- Whether id may be anchored to target without anchoring to itself or creating a loop.
+function Doc:CanAnchorTo(id, target)
+	if not target or target == 0 then return true end
+	if target == id or not self:Get(target) then return false end
+	local seen = {}
+	local stack = { target }
+	while #stack > 0 do
+		local current = table.remove(stack)
+		if current == id then return false end
+		if not seen[current] then
+			seen[current] = true
+			local node = self:Get(current)
+			if node then
+				for _, dep in ipairs(Dependencies(self, node)) do
+					table.insert(stack, dep)
+				end
+			end
+		end
+	end
+	return true
+end
+
+-- The element an anchor actually uses: its target when valid, otherwise nil for the parent.
+function Doc:ResolveAnchorTarget(node, target)
+	if target and target ~= 0 and self:Get(target) and self:CanAnchorTo(node.id, target) then
+		return target
+	end
+	return nil
 end

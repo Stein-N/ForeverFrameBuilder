@@ -42,6 +42,18 @@ Status bar, Texture, Text (FontString), 3D model and **Template** (any Blizzard 
 **Fill parent** (under Layout) anchors an element to all edges of its parent (`SetAllPoints`). Such elements are not
 moved on their own: dragging them moves the parent.
 
+### Anchor points
+
+Every element starts with one anchor point. Under Layout, **Add anchor point** adds more (e.g. `TOPLEFT` and
+`BOTTOMRIGHT`, so the element stretches with whatever it is anchored to); **Remove** deletes an additional one. Each
+anchor has its own point, relative point, offsets and **Relative to** target: the parent or any other element, such as
+a sibling button. Targets that would create an anchor loop are not offered.
+
+Changing a point, relative point or target keeps the element where it is and recalculates the offsets. Moving,
+resizing and the arrow keys move all anchors together; with anchors on opposite edges the anchors, not the width/height
+fields, decide the size on that axis. Deleting an element re-anchors everything attached to it to its parent in place.
+In the export, anchors to elements that are created further down are set in a separate block once all elements exist.
+
 ### Window
 
 Blizzard window templates with title, close button, portrait and button bar (depending on the style):

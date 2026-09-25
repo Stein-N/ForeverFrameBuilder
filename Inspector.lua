@@ -234,6 +234,35 @@ function Factories.template(row)
 	browse:SetPoint("LEFT", row.box, "RIGHT", 4, 0)
 end
 
+-- Title of an additional anchor with a button on the right (Remove).
+function Factories.subheader(row)
+	row.text = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	row.text:SetPoint("LEFT", 8, 0)
+	row.text:SetTextColor(1, 1, 1)
+	local button = W.Button(row, "", 80)
+	button:SetHeight(20)
+	button:SetPoint("RIGHT", -8, 0)
+	button:SetScript("OnClick", function()
+		row.field.action()
+	end)
+	row.Setup = function(self, field)
+		self.text:SetText(field.label)
+		button:SetText(field.actionText)
+	end
+end
+
+-- A single button in the control column.
+function Factories.action(row)
+	local button = W.Button(row, "", 160)
+	button:SetPoint("LEFT", CONTROL_LEFT, 0)
+	button:SetScript("OnClick", function()
+		row.field.action()
+	end)
+	row.Setup = function(self, field)
+		button:SetText(field.text)
+	end
+end
+
 function Factories.script(row)
 	local button = W.Button(row, "", 110)
 	button:SetPoint("LEFT", CONTROL_LEFT, 0)
@@ -261,7 +290,7 @@ function Inspector:AcquireRow(kind)
 	if not row then
 		row = CreateFrame("Frame", nil, self.content)
 		row.kind = kind
-		if kind ~= "header" then
+		if kind ~= "header" and kind ~= "subheader" then
 			row.label = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 			row.label:SetPoint("LEFT", 8, 0)
 			row.label:SetWidth(LABEL_WIDTH)
@@ -313,6 +342,19 @@ local function ParentOptions(id)
 	local options = { { value = 0, label = L["(Screen)"] } }
 	Doc:Walk(function(other, depth)
 		if other.id ~= id and not Doc:IsAncestor(id, other.id) and ns.Elements[other.type].allowChildren then
+			table.insert(options, { value = other.id, label = ("  "):rep(depth) .. other.name })
+		end
+	end)
+	return options
+end
+
+-- Elements an anchor may be relative to: the parent, or any element that doesn't
+-- (directly or indirectly) depend on this one.
+local function AnchorTargetOptions(id)
+	local node = Doc:Get(id)
+	local options = { { value = 0, label = L["(Parent)"] } }
+	Doc:Walk(function(other, depth)
+		if other.id ~= node.parent and Doc:CanAnchorTo(id, other.id) then
 			table.insert(options, { value = other.id, label = ("  "):rep(depth) .. other.name })
 		end
 	end)
@@ -371,19 +413,50 @@ function Inspector:BuildFields(id)
 	})
 
 	Add({ kind = "header", label = L["Layout"] })
-	Add({
-		kind = "select", label = L["Anchor"], options = ns.POINTS,
-		get = function() local n = N() return n and n.point end,
-		set = function(value) ns.Canvas:SetAnchor(id, value, N().relPoint) end,
-	})
-	Add({
-		kind = "select", label = L["Relative to"], options = ns.POINTS,
-		get = function() local n = N() return n and n.relPoint end,
-		set = function(value) ns.Canvas:SetAnchor(id, N().point, value) end,
-	})
 	NodeField("bool", L["Fill parent"], "fill")
-	NodeField("number", L["X offset"], "x", { step = 1 })
-	NodeField("number", L["Y offset"], "y", { step = 1 })
+	-- One block per anchor point; the first one can't be removed.
+	if not node.fill then
+		for index = 1, #Doc.GetAnchors(node) do
+			local function A()
+				local n = N()
+				return n and Doc.GetAnchors(n)[index]
+			end
+			local function SetOffset(axis)
+				return function(value, mergeKey, noCheckpoint)
+					local list = Doc.GetAnchors(N())
+					list[index][axis] = value
+					Doc:SetAnchors(id, list, noCheckpoint, mergeKey and (mergeKey .. ":" .. id .. ":" .. index))
+				end
+			end
+			if index > 1 then
+				Add({
+					kind = "subheader", label = L["Anchor point %d"]:format(index), actionText = L["Remove"],
+					action = function() ns.Canvas:RemoveAnchor(id, index) end,
+				})
+			end
+			Add({
+				kind = "select", label = L["Anchor"], options = ns.POINTS,
+				get = function() local a = A() return a and a.point end,
+				set = function(value) ns.Canvas:SetAnchorField(id, index, "point", value) end,
+			})
+			Add({
+				kind = "select", label = L["Relative to"],
+				options = function() return AnchorTargetOptions(id) end,
+				get = function() local a = A() return a and a.target end,
+				set = function(value) ns.Canvas:SetAnchorField(id, index, "target", value) end,
+			})
+			Add({
+				kind = "select", label = L["Relative point"], options = ns.POINTS,
+				get = function() local a = A() return a and a.relPoint end,
+				set = function(value) ns.Canvas:SetAnchorField(id, index, "relPoint", value) end,
+			})
+			Add({ kind = "number", label = L["X offset"], step = 1, get = function() local a = A() return a and a.x end, set = SetOffset("x") })
+			Add({ kind = "number", label = L["Y offset"], step = 1, get = function() local a = A() return a and a.y end, set = SetOffset("y") })
+		end
+		if #Doc.GetAnchors(node) < #ns.POINTS then
+			Add({ kind = "action", label = "", text = L["Add anchor point"], action = function() ns.Canvas:AddAnchor(id) end })
+		end
+	end
 	NodeField("number", L["Width"], "w", { step = 1, min = 1 })
 	NodeField("number", L["Height"], "h", { step = 1, min = 1 })
 	NodeField("number", L["Alpha"], "alpha", { step = 0.05, min = 0, max = 1 })
@@ -474,7 +547,11 @@ function Inspector:Rebuild()
 	self:ReleaseRows()
 	self.offset = 4
 	local id = Doc.selected
-	if id and Doc:Get(id) then
+	local node = id and Doc:Get(id)
+	-- Remembered so a change in the number of anchor blocks triggers a rebuild.
+	self.builtFill = node and node.fill
+	self.builtAnchors = node and #node.anchors
+	if node then
 		for _, field in ipairs(self:BuildFields(id)) do
 			self:AddRow(field)
 		end
@@ -482,6 +559,7 @@ function Inspector:Rebuild()
 	self.content:SetHeight(math.max(1, self.offset + 4))
 	self.empty:SetShown(#self.rows == 0)
 end
+
 
 function Inspector:Refresh()
 	for _, row in ipairs(self.rows) do
@@ -499,7 +577,11 @@ ns.On("PROJECT_CHANGED", Rebuild)
 ns.On("STRUCTURE_CHANGED", Rebuild)
 ns.On("SELECTION_CHANGED", Rebuild)
 ns.On("NODE_CHANGED", function(id)
-	if id == Doc.selected then
+	if id ~= Doc.selected then return end
+	local node = Doc:Get(id)
+	if node and (node.fill ~= Inspector.builtFill or #node.anchors ~= Inspector.builtAnchors) then
+		Inspector:Rebuild()
+	else
 		Inspector:Refresh()
 	end
 end)

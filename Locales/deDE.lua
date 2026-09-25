@@ -231,3 +231,10 @@ L["Adds this OnLoad code:"] = "Fügt diesen OnLoad-Code hinzu:"
 L["Template %s can't be used: %s"] = "Template %s kann nicht verwendet werden: %s"
 L["it only works through a derived template that provides: %s"] = "es funktioniert nur über ein abgeleitetes Template, das Folgendes liefert: %s"
 L["Not usable on its own: its OnLoad expects %s from a derived template."] = "Nicht eigenständig nutzbar: Sein OnLoad erwartet %s aus einem abgeleiteten Template."
+
+-- Anchors
+L["Relative point"] = "Bezugspunkt"
+L["(Parent)"] = "(Eltern-Element)"
+L["Anchor point %d"] = "Ankerpunkt %d"
+L["Remove"] = "Entfernen"
+L["Add anchor point"] = "Ankerpunkt hinzufügen"

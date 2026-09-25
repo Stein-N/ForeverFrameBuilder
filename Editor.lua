@@ -315,7 +315,7 @@ function Editor:HandleKey(key)
 		local step = shift and ns.db.settings.gridSize or 1
 		local dx = (key == "LEFT" and -step) or (key == "RIGHT" and step) or 0
 		local dy = (key == "DOWN" and -step) or (key == "UP" and step) or 0
-		Doc:SetMany(selected.id, { x = selected.x + dx, y = selected.y + dy }, false, "nudge:" .. selected.id)
+		Doc:SetMany(selected.id, Doc.ShiftAnchors(selected, dx, dy), false, "nudge:" .. selected.id)
 	else
 		return false
 	end

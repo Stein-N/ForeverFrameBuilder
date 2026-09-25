@@ -304,8 +304,11 @@ function Canvas:ApplyNode(id)
 	if node.fill then
 		holder:SetAllPoints(self:ChildParent(node.parent))
 	else
-		holder:SetPoint(node.point, self:ChildParent(node.parent), node.relPoint, node.x, node.y)
+		-- With anchors on opposite edges the anchors decide that axis and the size is ignored.
 		holder:SetSize(math.max(1, node.w), math.max(1, node.h))
+		for _, anchor in ipairs(Doc.GetAnchors(node)) do
+			holder:SetPoint(anchor.point, self:AnchorFrame(node, anchor.target), anchor.relPoint, anchor.x, anchor.y)
+		end
 	end
 	if def.Layout then
 		ok, err = pcall(def.Layout, holder, node, self.preview)
@@ -534,34 +537,135 @@ function Canvas:ScrollUnderCursor(delta)
 	return true
 end
 
--- Offsets that keep an element where it currently is on screen after changing its
--- anchor points and/or parent. Returns nil when the layout isn't resolved yet.
-function Canvas:OffsetsFor(id, point, relPoint, parentId)
+-- The frame an anchor is relative to: another element, or the parent (a scroll frame's content).
+function Canvas:AnchorFrame(node, target, parentId)
+	local resolved = Doc:ResolveAnchorTarget(node, target)
+	if resolved and self.holders[resolved] then
+		return self.holders[resolved]
+	end
+	if parentId == nil then parentId = node.parent end
+	return self:ChildParent(parentId)
+end
+
+-- Offsets that keep an element where it currently is on screen for the given anchor
+-- points and relative frame. Returns nil when the layout isn't resolved yet.
+function Canvas:OffsetsToFrame(id, point, relPoint, frame)
 	local holder = self.holders[id]
-	local parent = self:ChildParent(parentId)
-	if not holder or not parent then return end
+	if not holder or not frame then return end
 	local left, bottom, width, height = holder:GetRect()
-	local parentLeft, parentBottom, parentWidth, parentHeight = parent:GetRect()
-	if not left or not parentLeft then return end
+	local frameLeft, frameBottom, frameWidth, frameHeight = frame:GetRect()
+	if not left or not frameLeft then return end
 	local f, pf = ns.POINT_FACTORS[point], ns.POINT_FACTORS[relPoint]
-	local x = left + f[1] * width - (parentLeft + pf[1] * parentWidth)
-	local y = bottom + f[2] * height - (parentBottom + pf[2] * parentHeight)
+	local x = left + f[1] * width - (frameLeft + pf[1] * frameWidth)
+	local y = bottom + f[2] * height - (frameBottom + pf[2] * frameHeight)
 	return ns.Round(x, 1), ns.Round(y, 1)
 end
 
+function Canvas:OffsetsFor(id, point, relPoint, parentId)
+	return self:OffsetsToFrame(id, point, relPoint, self:ChildParent(parentId))
+end
+
+-- Moves an element to a new parent; anchors relative to the parent follow it without
+-- moving the element, anchors to other elements are kept.
 function Canvas:Reparent(id, parentId)
 	local node = Doc:Get(id)
 	if not node then return end
-	local x, y = self:OffsetsFor(id, node.point, node.relPoint, parentId)
-	Doc:SetParent(id, parentId, x and { x = x, y = y } or nil)
+	local list = Doc.GetAnchors(node)
+	for _, anchor in ipairs(list) do
+		if anchor.target == 0 or anchor.target == parentId or not Doc:ResolveAnchorTarget(node, anchor.target) then
+			anchor.target = 0
+			local x, y = self:OffsetsFor(id, anchor.point, anchor.relPoint, parentId)
+			anchor.x, anchor.y = x or anchor.x, y or anchor.y
+		end
+	end
+	Doc:SetParent(id, parentId, Doc.AnchorFields(list))
 end
 
--- Changes anchor points without moving the element on screen.
+-- Changes one field (point, target, relPoint) of anchor index without moving the element.
+function Canvas:SetAnchorField(id, index, field, value)
+	local node = Doc:Get(id)
+	if not node then return end
+	local list = Doc.GetAnchors(node)
+	local anchor = list[index]
+	if not anchor then return end
+	anchor[field] = value
+	local x, y = self:OffsetsToFrame(id, anchor.point, anchor.relPoint, self:AnchorFrame(node, anchor.target))
+	anchor.x, anchor.y = x or anchor.x, y or anchor.y
+	Doc:SetAnchors(id, list)
+end
+
+-- Kept for callers that only change the primary anchor points.
 function Canvas:SetAnchor(id, point, relPoint)
 	local node = Doc:Get(id)
 	if not node then return end
-	local x, y = self:OffsetsFor(id, point, relPoint, node.parent)
-	Doc:SetMany(id, { point = point, relPoint = relPoint, x = x or node.x, y = y or node.y })
+	local list = Doc.GetAnchors(node)
+	list[1].point, list[1].relPoint = point, relPoint
+	local x, y = self:OffsetsToFrame(id, point, relPoint, self:AnchorFrame(node, list[1].target))
+	list[1].x, list[1].y = x or list[1].x, y or list[1].y
+	Doc:SetAnchors(id, list)
+end
+
+local OPPOSITE_POINTS = {
+	TOPLEFT = "BOTTOMRIGHT", TOP = "BOTTOM", TOPRIGHT = "BOTTOMLEFT", LEFT = "RIGHT",
+	RIGHT = "LEFT", BOTTOMLEFT = "TOPRIGHT", BOTTOM = "TOP", BOTTOMRIGHT = "TOPLEFT",
+}
+
+-- Adds an anchor that keeps the current position: the point opposite the first anchor if
+-- free, otherwise the next unused point, relative to the same frame and point.
+function Canvas:AddAnchor(id)
+	local node = Doc:Get(id)
+	if not node then return end
+	local list = Doc.GetAnchors(node)
+	local used = {}
+	for _, anchor in ipairs(list) do
+		used[anchor.point] = true
+	end
+	local point = OPPOSITE_POINTS[list[1].point]
+	if not point or used[point] then
+		point = nil
+		for _, candidate in ipairs(ns.POINTS) do
+			if not used[candidate] then
+				point = candidate
+				break
+			end
+		end
+	end
+	if not point then return end
+	local target = list[1].target
+	local x, y = self:OffsetsToFrame(id, point, point, self:AnchorFrame(node, target))
+	table.insert(list, { point = point, target = target, relPoint = point, x = x or 0, y = y or 0 })
+	Doc:SetAnchors(id, list)
+end
+
+function Canvas:RemoveAnchor(id, index)
+	local node = Doc:Get(id)
+	if not node or index < 2 then return end
+	local list = Doc.GetAnchors(node)
+	table.remove(list, index)
+	Doc:SetAnchors(id, list)
+end
+
+-- Called before elements are deleted: anchors pointing into the removed set are turned
+-- into anchors to the parent at the current position (part of the same undo step).
+function Canvas:DetachAnchors(removed)
+	for id, node in pairs(Doc.project.nodes) do
+		if not removed[id] then
+			local list = Doc.GetAnchors(node)
+			local changed = false
+			for _, anchor in ipairs(list) do
+				if anchor.target ~= 0 and removed[anchor.target] then
+					local x, y = self:OffsetsFor(id, anchor.point, anchor.relPoint, node.parent)
+					anchor.target, anchor.x, anchor.y = 0, x or anchor.x, y or anchor.y
+					changed = true
+				end
+			end
+			if changed then
+				for field, value in pairs(Doc.AnchorFields(list)) do
+					node[field] = value
+				end
+			end
+		end
+	end
 end
 
 ---------------------------------------------------------------------------
@@ -620,17 +724,19 @@ function Canvas:BeginMove(id)
 	if not node then return end
 	id = node.id
 	local cx, cy = self:CursorInContent()
-	StartDriver(self, "move", "LeftButton", { id = id, cx = cx, cy = cy, x = node.x, y = node.y })
+	StartDriver(self, "move", "LeftButton", { id = id, cx = cx, cy = cy, x = node.x, y = node.y, anchors = Doc.GetAnchors(node) })
 end
 
 function Canvas:BeginResize(id, edges)
 	local node = Doc:Get(id)
 	if node.fill then return end
 	local cx, cy = self:CursorInContent()
-	local factors = ns.POINT_FACTORS[node.point]
+	-- Start from the real size: anchors on opposite edges may override node.w/h.
+	local holder = self.holders[id]
+	local w, h = holder and holder:GetSize()
 	StartDriver(self, "resize", "LeftButton", {
-		id = id, cx = cx, cy = cy, x = node.x, y = node.y, w = node.w, h = node.h,
-		fx = factors[1], fy = factors[2], edges = edges,
+		id = id, cx = cx, cy = cy, w = (w and w > 0) and w or node.w, h = (h and h > 0) and h or node.h,
+		anchors = Doc.GetAnchors(node), edges = edges,
 	})
 end
 
@@ -670,28 +776,45 @@ function Canvas:UpdateDrag()
 	end
 
 	if drag.mode == "move" then
-		Doc:SetMany(drag.id, { x = ns.Snap(drag.x + dx), y = ns.Snap(drag.y + dy) }, true)
+		-- The first anchor snaps; every other anchor moves by the same amount.
+		local first = drag.anchors[1]
+		local moveX, moveY = ns.Snap(first.x + dx) - first.x, ns.Snap(first.y + dy) - first.y
+		local list = CopyTable(drag.anchors)
+		for _, anchor in ipairs(list) do
+			anchor.x, anchor.y = anchor.x + moveX, anchor.y + moveY
+		end
+		Doc:SetAnchors(drag.id, list, true)
 		return
 	end
 
-	-- Resize: the edge opposite to the dragged one stays in place, whatever the anchor is.
+	-- Resize: the edge opposite to the dragged one stays in place. Every anchor moves by
+	-- the part of the size change that corresponds to its position on the element.
 	local edges = drag.edges
-	local w, h, x, y = drag.w, drag.h, drag.x, drag.y
+	local w, h = drag.w, drag.h
+	local growLeft, growRight, growTop, growBottom = 0, 0, 0, 0
 	if edges.right then
 		w = math.max(MIN_SIZE, ns.Snap(drag.w + dx))
-		x = drag.x + drag.fx * (w - drag.w)
+		growRight = w - drag.w
 	elseif edges.left then
 		w = math.max(MIN_SIZE, ns.Snap(drag.w - dx))
-		x = drag.x + (1 - drag.fx) * (drag.w - w)
+		growLeft = w - drag.w
 	end
 	if edges.top then
 		h = math.max(MIN_SIZE, ns.Snap(drag.h + dy))
-		y = drag.y + drag.fy * (h - drag.h)
+		growTop = h - drag.h
 	elseif edges.bottom then
 		h = math.max(MIN_SIZE, ns.Snap(drag.h - dy))
-		y = drag.y + (1 - drag.fy) * (drag.h - h)
+		growBottom = h - drag.h
 	end
-	Doc:SetMany(drag.id, { w = w, h = h, x = x, y = y }, true)
+	local list = CopyTable(drag.anchors)
+	for _, anchor in ipairs(list) do
+		local fx, fy = unpack(ns.POINT_FACTORS[anchor.point])
+		anchor.x = anchor.x + fx * growRight - (1 - fx) * growLeft
+		anchor.y = anchor.y + fy * growTop - (1 - fy) * growBottom
+	end
+	local fields = Doc.AnchorFields(list)
+	fields.w, fields.h = w, h
+	Doc:SetMany(drag.id, fields, true)
 end
 
 function Canvas:EndDrag(button)
@@ -747,10 +870,8 @@ function Canvas:UpdateSelection()
 	end
 	selection:ClearAllPoints()
 	selection:SetAllPoints(holder)
-	local width, height = node.w, node.h
-	if node.fill then
-		width, height = holder:GetSize()
-	end
+	-- The real size: fill and anchors on opposite edges override node.w/h.
+	local width, height = holder:GetSize()
 	selection.label:SetText(("%s  |cffaaaaaa%s x %s|r"):format(node.name,
 		ns.LuaNum(ns.Round(width or 0, 1)), ns.LuaNum(ns.Round(height or 0, 1))))
 	for _, grip in ipairs(selection.grips) do

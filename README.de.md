@@ -34,6 +34,19 @@ Textur, Text (FontString), 3D-Modell und **Template** (jedes Blizzard-Template).
 **Eltern füllen** (unter Layout) verankert ein Element an allen Kanten seines Eltern-Elements (`SetAllPoints`).
 Solche Elemente werden nicht selbst verschoben: Ziehen bewegt das Eltern-Element.
 
+### Ankerpunkte
+
+Jedes Element hat zunächst einen Ankerpunkt. Unter Layout fügt **Ankerpunkt hinzufügen** weitere hinzu (z. B. `TOPLEFT`
+und `BOTTOMRIGHT`, damit sich das Element mit seinem Bezug mitdehnt); **Entfernen** löscht einen zusätzlichen. Jeder Anker
+hat eigenen Punkt, Bezugspunkt, Versatz und ein eigenes **Relativ zu**: das Eltern-Element oder ein beliebiges anderes
+Element, z. B. einen Nachbar-Button. Ziele, die eine Anker-Schleife ergeben würden, werden nicht angeboten.
+
+Beim Ändern von Punkt, Bezugspunkt oder Ziel bleibt das Element an seiner Stelle, die Offsets werden umgerechnet.
+Verschieben, Größe ändern und die Pfeiltasten bewegen alle Anker gemeinsam; mit Ankern an gegenüberliegenden Kanten
+bestimmen die Anker (nicht Breite/Höhe) die Größe auf dieser Achse. Wird ein Element gelöscht, werden alle daran
+verankerten Elemente an Ort und Stelle an ihr Eltern-Element gehängt. Im Export werden Anker zu Elementen, die erst
+weiter unten erzeugt werden, in einem eigenen Block gesetzt, sobald alle Elemente existieren.
+
 ### Fenster
 
 Blizzard-Fenster-Templates mit Titel, Schließen-Button, Porträt und Button-Leiste (je nach Stil):
