@@ -259,3 +259,7 @@ L["No errors recorded."] = "Keine Fehler aufgezeichnet."
 L["Then copy the report with Ctrl+C."] = "Danach den Bericht mit Strg+C kopieren."
 L["Clear all"] = "Alle löschen"
 L["Recorded errors with template, properties and all scripts – for faster bug fixing."] = "Aufgezeichnete Fehler mit Template, Eigenschaften und allen Skripten – für schnellere Fehlerbehebung."
+
+-- Code editor
+L["Syntax OK"] = "Syntax OK"
+L["Line %d: %s"] = "Zeile %d: %s"

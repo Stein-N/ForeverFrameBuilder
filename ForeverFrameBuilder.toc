@@ -22,6 +22,7 @@ Widgets.lua
 Canvas.lua
 Panels.lua
 Inspector.lua
+CodeEditor.lua
 Dialogs.lua
 Errors.lua
 Editor.lua

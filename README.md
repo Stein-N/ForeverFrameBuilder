@@ -130,6 +130,11 @@ Every element has script slots (`OnLoad`, `OnClick`, `OnValueChanged`, …). Ins
 other elements are reachable through `E.<Name>`, e.g. `E.MainFrame:Hide()`. **Preview** makes everything live:
 buttons can be clicked, scripts run and movable frames can be dragged. "Edit mode" restores the design.
 
+The script editor (and the Lua export view) is a code editor: Lua syntax highlighting (keywords, strings, comments,
+numbers, function calls, `self`/`E`/`true`/`false`/`nil`), line numbers, a live syntax check that shows "Syntax OK"
+or the error with its line (the line is also marked), Tab inserts four spaces and Enter keeps the indentation (one
+level more after `then`, `do`, `function`, `repeat`, `{`). Scripts with syntax errors can't be saved.
+
 ## Export
 
 - **Lua code:** standalone code (`CreateFrame` …) you can paste straight into an addon. All elements are stored in

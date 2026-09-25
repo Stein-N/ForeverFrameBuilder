@@ -61,7 +61,9 @@ function Dialogs:GetTextDialog()
 
 	local editBox = editor:GetEditBox()
 	editBox:SetScript("OnTabPressed", function(self)
-		self:Insert("\t")
+		if not dialog.code:OnTab() then
+			self:Insert("\t")
+		end
 	end)
 
 	dialog.accept = W.Button(dialog, L["Save"], 100, function()
@@ -84,12 +86,21 @@ function Dialogs:GetTextDialog()
 	end)
 	dialog.selectAll:SetPoint("BOTTOMLEFT", 10, 8)
 
+	-- Syntax result of code editors ("Syntax OK" / "Line 3: ...").
+	dialog.status = W.Label(dialog, "", "GameFontHighlightSmall")
+	dialog.status:SetPoint("LEFT", dialog.selectAll, "RIGHT", 10, 0)
+	dialog.status:SetPoint("RIGHT", dialog.cancel, "LEFT", -10, 0)
+	dialog.status:SetJustifyH("LEFT")
+	dialog.status:SetWordWrap(false)
+	dialog.code = ns.CodeEditor.Attach(editor, dialog.status)
+
 	dialog:Hide()
 	self.textDialog = dialog
 	return dialog
 end
 
--- options: title, hint, text, acceptText (nil = read-only), onAccept(text) -> false keeps it open
+-- options: title, hint, text, acceptText (nil = read-only), onAccept(text) -> false keeps it open,
+-- code (Lua highlighting and syntax check), args (script arguments for the check)
 function Dialogs:ShowText(options)
 	local dialog = self:GetTextDialog()
 	ns.SetFrameTitle(dialog, options.title or ns.title)
@@ -98,7 +109,9 @@ function Dialogs:ShowText(options)
 	dialog.accept:SetShown(options.acceptText ~= nil)
 	dialog.accept:SetText(options.acceptText or "")
 	dialog.cancel:SetText(options.acceptText and CANCEL or CLOSE)
-	dialog.editor:SetText(options.text or "")
+	dialog.code:SetMode({ enabled = options.code, args = options.args })
+	dialog.editor:SetText(dialog.code:PrepareText(options.text or ""))
+	dialog.code:Refresh()
 	dialog:Show()
 	dialog:Raise()
 	local editBox = dialog.editor:GetEditBox()
@@ -125,11 +138,13 @@ function Dialogs:EditScript(id, script)
 		title = node.name .. " – " .. script.name,
 		hint = signature,
 		text = node.scripts[script.name] or "",
+		code = true,
+		args = script.args,
 		acceptText = L["Save"],
 		onAccept = function(text)
-			local _, err = loadstring("return function(" .. script.args .. ")\n" .. text .. "\nend", script.name)
-			if err then
-				self:SetHint("|cffff4040" .. err .. "|r")
+			local ok, line, message = ns.LuaSyntax.Check(text, script.args)
+			if not ok then
+				self:SetHint("|cffff4040" .. (line and L["Line %d: %s"]:format(line, message) or message) .. "|r")
 				return false
 			end
 			Doc:SetScript(id, script.name, text)
@@ -142,6 +157,7 @@ function Dialogs:ShowExportLua()
 		title = L["Export as Lua"],
 		hint = L["Copy with Ctrl+C and paste it into your addon."],
 		text = ns.Exporter:ToLua(),
+		code = true,
 		selectAll = true,
 	})
 end
