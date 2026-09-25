@@ -16,6 +16,7 @@ local DEFAULTS = {
 		gridSize = 8,
 		snap = true,
 		showGrid = true,
+		collapsedSections = {}, -- inspector sections the user folded away
 		window = nil, -- { point, x, y, w, h }
 	},
 }

@@ -13,7 +13,7 @@ Drag-&-Drop-Editor für Ingame-Frames, ähnlich einem Website-Builder. Öffnen m
 | Elemente | Palette: klicken fügt zum ausgewählten Frame hinzu, ziehen legt es an die Cursorposition |
 | Ebenen | Baum aller Elemente; Reihenfolge = Zeichenreihenfolge (unten = vorne) |
 | Arbeitsfläche | Entspricht `UIParent` (der blaue Rahmen ist dein Bildschirm) |
-| Eigenschaften | Name, Eltern-Element, Anker, Größe, Aussehen und Skripte des ausgewählten Elements |
+| Eigenschaften | Name, Eltern-Element, Anker, Größe, Aussehen und Skripte des ausgewählten Elements, in einklappbaren Bereichen (werden gemerkt) |
 
 ## Bedienung
 

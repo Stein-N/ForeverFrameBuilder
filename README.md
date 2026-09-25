@@ -21,7 +21,7 @@ Open the editor with `/ffb` (or `/framebuilder`, or through the addon compartmen
 | Elements | Palette: click adds to the selected frame, drag places it at the cursor |
 | Layers | Tree of all elements; order = draw order (lower = in front) |
 | Canvas | Represents `UIParent` (the blue outline is your screen) |
-| Properties | Name, parent, anchor, size, appearance and scripts of the selected element |
+| Properties | Name, parent, anchors, size, appearance and scripts of the selected element, in collapsible sections (remembered) |
 
 ## Controls
 

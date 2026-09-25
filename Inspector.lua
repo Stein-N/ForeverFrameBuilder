@@ -13,7 +13,7 @@ local Inspector = {}
 ns.Inspector = Inspector
 
 local ROW_HEIGHT = 26
-local HEADER_HEIGHT = 24
+local HEADER_HEIGHT = 30
 local LABEL_WIDTH = 92
 local CONTROL_LEFT = LABEL_WIDTH + 14
 
@@ -46,16 +46,34 @@ end
 
 local Factories = {}
 
+-- Section header: Blizzard's list header with a +/- button; a click folds the section.
 function Factories.header(row)
-	row.text = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	row.text:SetPoint("BOTTOMLEFT", 8, 4)
-	local line = row:CreateTexture(nil, "ARTWORK")
-	line:SetColorTexture(1, 0.82, 0, 0.25)
-	line:SetHeight(1)
-	line:SetPoint("BOTTOMLEFT", 6, 1)
-	line:SetPoint("BOTTOMRIGHT", -6, 1)
+	local ok, header = pcall(CreateFrame, "Button", nil, row, "ListHeaderVisualTemplate")
+	if not ok or not header.SetHeaderText then
+		-- Fallback without the template: plain button with a text.
+		header = CreateFrame("Button", nil, row)
+		header.text = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		header.text:SetPoint("LEFT", 8, 0)
+		header.SetHeaderText = function(self, text) self.text:SetText(text) end
+	else
+		-- Gold title, white while hovered (the template alone shows grey).
+		header:SetTitleColor(false, NORMAL_FONT_COLOR)
+		header:SetTitleColor(true, HIGHLIGHT_FONT_COLOR)
+		header:SetScript("OnEnter", function(self) self:CheckHighlightTitle(true) end)
+		header:SetScript("OnLeave", function(self) self:CheckHighlightTitle(false) end)
+	end
+	header:SetPoint("TOPLEFT", 4, -2)
+	header:SetPoint("BOTTOMRIGHT", -4, 2)
+	header:SetScript("OnClick", function()
+		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+		Inspector:ToggleSection(row.field.section)
+	end)
+	row.header = header
 	row.Setup = function(self, field)
-		self.text:SetText(field.label)
+		header:SetHeaderText(field.label)
+		if header.CollapseButton then
+			header.CollapseButton:UpdateCollapsedState(Inspector:IsCollapsed(field.section))
+		end
 	end
 end
 
@@ -391,7 +409,7 @@ function Inspector:BuildFields(id)
 		Add(field)
 	end
 
-	Add({ kind = "header", label = L["Element"] })
+	Add({ kind = "header", label = L["Element"], section = "element" })
 	Add({ kind = "label", label = L["Type"], get = function() return def.label end })
 	Add({
 		kind = "string", label = L["Name"],
@@ -412,7 +430,7 @@ function Inspector:BuildFields(id)
 		set = function(value) ns.Canvas:Reparent(id, value ~= 0 and value or nil) end,
 	})
 
-	Add({ kind = "header", label = L["Layout"] })
+	Add({ kind = "header", label = L["Layout"], section = "layout" })
 	NodeField("bool", L["Fill parent"], "fill")
 	-- One block per anchor point; the first one can't be removed.
 	if not node.fill then
@@ -466,7 +484,7 @@ function Inspector:BuildFields(id)
 	end
 
 	if #def.props > 0 then
-		Add({ kind = "header", label = L["Appearance"] })
+		Add({ kind = "header", label = L["Appearance"], section = "appearance" })
 		for _, prop in ipairs(def.props) do
 			NodeField(prop.kind, prop.label, prop.key, {
 				options = prop.options, step = prop.step, min = prop.min, max = prop.max,
@@ -504,7 +522,7 @@ function Inspector:BuildFields(id)
 		end
 	end
 
-	Add({ kind = "header", label = L["Scripts"] })
+	Add({ kind = "header", label = L["Scripts"], section = "scripts" })
 	for _, script in ipairs(def.scripts) do
 		Add({
 			kind = "script", label = script.name,
@@ -527,8 +545,8 @@ function Inspector:Create(parent)
 	local host = CreateFrame("Frame", nil, frame)
 	host:SetPoint("TOPLEFT", 0, -22)
 	host:SetPoint("BOTTOMRIGHT")
-	local _, content = W.ScrollArea(host)
-	self.content = content
+	local scroll, content = W.ScrollArea(host)
+	self.scroll, self.content = scroll, content
 
 	self.empty = W.Label(host, "", "GameFontDisableSmall")
 	self.empty:SetPoint("TOPLEFT", 10, -10)
@@ -552,14 +570,36 @@ function Inspector:Rebuild()
 	self.builtFill = node and node.fill
 	self.builtAnchors = node and #node.anchors
 	if node then
+		-- Rows of a collapsed section are skipped; its header stays.
+		local collapsed = false
 		for _, field in ipairs(self:BuildFields(id)) do
-			self:AddRow(field)
+			if field.kind == "header" then
+				collapsed = self:IsCollapsed(field.section)
+				self:AddRow(field)
+			elseif not collapsed then
+				self:AddRow(field)
+			end
 		end
 	end
 	self.content:SetHeight(math.max(1, self.offset + 4))
 	self.empty:SetShown(#self.rows == 0)
 end
 
+function Inspector:IsCollapsed(section)
+	return section and ns.db.settings.collapsedSections[section] or false
+end
+
+function Inspector:ToggleSection(section)
+	if not section then return end
+	local sections = ns.db.settings.collapsedSections
+	sections[section] = not sections[section] or nil
+	-- Keep the scroll position so the clicked header stays under the cursor.
+	local scroll = self.scroll and self.scroll:GetVerticalScroll()
+	self:Rebuild()
+	if scroll then
+		self.scroll:SetVerticalScroll(math.min(scroll, self.scroll:GetVerticalScrollRange()))
+	end
+end
 
 function Inspector:Refresh()
 	for _, row in ipairs(self.rows) do
