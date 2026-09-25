@@ -14,6 +14,8 @@ local Syntax = {}
 ns.LuaSyntax = Syntax
 
 local MAX_HIGHLIGHT_LENGTH = 20000
+-- Coloring waits until typing pauses, like FAIAP does.
+local RECOLOR_DELAY = 0.2
 local INDENT = "    "
 local GUTTER_WIDTH = 30
 
@@ -267,6 +269,13 @@ function CodeEditor.Attach(editor, status)
 	editBox:HookScript("OnTextChanged", function(box)
 		self:OnTextChanged(box)
 	end)
+	editBox:HookScript("OnUpdate", function(box)
+		if self.dirty and GetTime() - self.dirty >= RECOLOR_DELAY
+			and not (box.IsInIMECompositionMode and box:IsInIMECompositionMode()) then
+			self.dirty = nil
+			self:Recolor(box)
+		end
+	end)
 
 	local gutter = editBox:CreateFontString(nil, "OVERLAY")
 	gutter:SetJustifyH("RIGHT")
@@ -333,38 +342,66 @@ function CodeEditor:ShowPlain()
 	self.rawSetText(self.editBox, code)
 	self.updating = false
 	self.plainView = true
+	self.dirty = nil
 end
 
--- After every change: recolor, keep the cursor on the same code position and indent new lines.
+-- Places the cursor at a position of the colored text. SetCursorPosition right after
+-- SetText doesn't reliably show the cursor in colored text, so - like FAIAP - a helper
+-- character is inserted there, selected and replaced: the edit box then moves the cursor
+-- itself, the way typing does.
+function CodeEditor:SetCaret(box, position)
+	local raw = self.rawGetText(box) or ""
+	if raw == "" then return end
+	self.rawSetText(box, raw:sub(1, position) .. "a" .. raw:sub(position + 1))
+	box:HighlightText(position, position + 1)
+	box:Insert("\0")
+end
+
+-- After every change: indent new lines right away, update line numbers and the syntax
+-- status, and schedule recoloring for when typing pauses.
 function CodeEditor:OnTextChanged(box)
 	if not self.enabled or self.updating then return end
 	local raw = self.rawGetText(box) or ""
 	local code, cursor
 	if self.plainView then
-		-- The plain view holds the code as it is: no color codes to strip.
+		code, cursor = raw, box:GetCursorPosition()
+	else
+		code, cursor = Syntax.Decode(raw, box:GetCursorPosition())
+	end
+	-- Enter inserted a newline right before the cursor: carry the indentation over. Insert
+	-- works at the edit box's own cursor, so it stays visible and in place.
+	if self.lastLength and #code == self.lastLength + 1 and code:sub(cursor, cursor) == "\n" then
+		local previous = code:sub(1, cursor - 1):match("([^\n]*)$") or ""
+		local indent = LeadingIndent(previous) .. (OpensBlock(previous) and INDENT or "")
+		if indent ~= "" then
+			self.lastLength = #code
+			box:Insert(indent)
+			return
+		end
+	end
+	self.lastLength = #code
+	self.dirty = GetTime()
+	self:Update(code)
+end
+
+-- Rewrites the edit box text with fresh colors and puts the cursor back on the same code
+-- position.
+function CodeEditor:Recolor(box)
+	if not self.enabled then return end
+	local raw = self.rawGetText(box) or ""
+	local code, cursor
+	if self.plainView then
 		code, cursor = raw, box:GetCursorPosition()
 		self.plainView = false
 	else
 		code, cursor = Syntax.Decode(raw, box:GetCursorPosition())
 	end
-	-- Enter inserted a newline right before the cursor: carry the indentation over.
-	if self.lastLength and #code == self.lastLength + 1 and code:sub(cursor, cursor) == "\n" then
-		local previous = code:sub(1, cursor - 1):match("([^\n]*)$") or ""
-		local indent = LeadingIndent(previous) .. (OpensBlock(previous) and INDENT or "")
-		if indent ~= "" then
-			code = code:sub(1, cursor) .. indent .. code:sub(cursor + 1)
-			cursor = cursor + #indent
-		end
-	end
-	self.lastLength = #code
 	local encoded = Syntax.Encode(code)
-	if encoded ~= raw then
-		self.updating = true
-		self.rawSetText(box, encoded)
-		box:SetCursorPosition(Syntax.RawCursor(encoded, cursor))
-		self.updating = false
-	end
-	self:Update(code)
+	if encoded == raw then return end
+	self.updating = true
+	self.rawSetText(box, encoded)
+	self:SetCaret(box, Syntax.RawCursor(encoded, cursor))
+	self.updating = false
 end
 
 function CodeEditor:Refresh()
