@@ -23,4 +23,5 @@ Canvas.lua
 Panels.lua
 Inspector.lua
 Dialogs.lua
+Errors.lua
 Editor.lua

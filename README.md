@@ -17,7 +17,7 @@ Open the editor with `/ffb` (or `/framebuilder`, or through the addon compartmen
 
 | Area | Purpose |
 |---|---|
-| Toolbar | Projects, undo/redo, grid/snap, zoom, export, preview |
+| Toolbar | Projects, undo/redo, grid/snap, zoom, errors, export, preview |
 | Elements (tab, left) | Palette in foldable groups (containers, controls, display, Blizzard templates): click adds to the selected frame, drag places it at the cursor |
 | Layers (tab, left) | Tree of all elements; order = draw order (lower = in front). Elements with children fold with +/- (hidden count shown); "Expand all"/"Collapse all" in the right-click menu |
 | Canvas | Represents `UIParent` (the blue outline is your screen) |
@@ -138,6 +138,16 @@ buttons can be clicked, scripts run and movable frames can be dragged. "Edit mod
   using the preview!
 
 Projects are saved in `ForeverFrameBuilderDB` (SavedVariables).
+
+## Errors
+
+The **Errors** button opens a log of errors that happened in the editor: templates that could not be created,
+failing `OnLoad`/`OnShow`, properties that could not be applied, script errors in the preview or editor, and Lua
+errors from the addon or during the preview (those are still passed on to the default error handler / BugSack).
+The button shows the number of entries in red. Each entry has a copyable report with time, client and addon version,
+project, element, template (widget type, addon, markers, catalog setup code), message, stack, layout, properties, the
+element's scripts and all other scripts of the project. Identical errors are merged and counted; the last 50 entries
+are kept across reloads.
 
 ## Limitations
 

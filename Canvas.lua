@@ -236,7 +236,7 @@ function Canvas:Acquire(node)
 	local pool = self.pools[key]
 	local holder = pool and table.remove(pool)
 	if not holder then
-		holder = ns.Elements[node.type].Create(self.poolParent, node.props)
+		holder = ns.Elements[node.type].Create(self.poolParent, node.props, node)
 		holder.mfbType = node.type
 		holder.mfbPoolKey = key
 		-- Some templates size themselves in OnLoad (e.g. side tabs); remember it for the picker.
@@ -296,9 +296,10 @@ function Canvas:ApplyNode(id)
 	local holder = self.holders[id]
 	if not node or not holder then return end
 	local def = ns.Elements[node.type]
-	local ok, err = pcall(def.Apply, holder, node.props, self.preview)
+	local ok, err, stack = ns.Errors.Call(def.Apply, holder, node.props, self.preview)
 	if not ok then
 		ns.Print(L["Could not apply %s: %s"], node.name, tostring(err))
+		ns.Errors:Add({ kind = "apply", message = err, stack = stack, node = node })
 	end
 	holder:ClearAllPoints()
 	if node.fill then
@@ -311,9 +312,10 @@ function Canvas:ApplyNode(id)
 		end
 	end
 	if def.Layout then
-		ok, err = pcall(def.Layout, holder, node, self.preview)
+		ok, err, stack = ns.Errors.Call(def.Layout, holder, node, self.preview)
 		if not ok then
 			ns.Print(L["Could not apply %s: %s"], node.name, tostring(err))
+			ns.Errors:Add({ kind = "apply", message = err, stack = stack, node = node })
 		end
 	end
 	if self.preview then
@@ -984,8 +986,9 @@ function Canvas:SetPreview(enabled)
 	ns.Fire("PREVIEW_CHANGED", self.preview)
 end
 
-local function ReportError(node, script, err)
+local function ReportError(node, script, err, stack, kind)
 	ns.Print(L["Script error in %s.%s: %s"], node.name, script.name, tostring(err))
+	ns.Errors:Add({ kind = kind or "script", message = err, stack = stack or "", node = node, script = script.name })
 end
 
 function Canvas:CompileScript(node, script, code, E)
@@ -995,9 +998,9 @@ function Canvas:CompileScript(node, script, code, E)
 		ReportError(node, script, err)
 		return
 	end
-	local ok, fn = pcall(chunk, E)
+	local ok, fn, stack = ns.Errors.Call(chunk, E)
 	if not ok then
-		ReportError(node, script, fn)
+		ReportError(node, script, fn, stack)
 		return
 	end
 	return fn
@@ -1026,9 +1029,9 @@ function Canvas:RunEditorOnLoads()
 			local holder = self.holders[id]
 			holder.mfbTainted = true
 			if fn then
-				local ok, err = pcall(fn, holder)
+				local ok, err, stack = ns.Errors.Call(fn, holder)
 				if not ok then
-					ReportError(node, script, err)
+					ReportError(node, script, err, stack, "editorOnLoad")
 				end
 			end
 		end
@@ -1082,9 +1085,9 @@ function Canvas:RunScripts()
 			local fn = code and code ~= "" and self:CompileScript(node, script, code, E)
 			if fn then
 				local function Run(...)
-					local ok, err = pcall(fn, ...)
+					local ok, err, stack = ns.Errors.Call(fn, ...)
 					if not ok then
-						ReportError(node, script, err)
+						ReportError(node, script, err, stack)
 					end
 				end
 				if script.name == "OnLoad" then

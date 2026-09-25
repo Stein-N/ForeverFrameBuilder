@@ -12,6 +12,7 @@ local DEFAULTS = {
 	version = 1,
 	current = nil,
 	projects = {},
+	errors = {}, -- see Errors.lua
 	settings = {
 		gridSize = 8,
 		snap = true,
@@ -95,6 +96,7 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
 		ForeverFrameBuilderDB = ForeverFrameBuilderDB or {}
 		ApplyDefaults(ForeverFrameBuilderDB, DEFAULTS)
 		ns.db = ForeverFrameBuilderDB
+		ns.Errors:HookErrorHandler()
 		ns.Doc:Init()
 		eventFrame:UnregisterEvent("ADDON_LOADED")
 	elseif event == "PLAYER_REGEN_DISABLED" then

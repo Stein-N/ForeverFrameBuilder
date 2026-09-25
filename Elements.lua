@@ -1372,9 +1372,12 @@ Register({
 		end
 	end,
 	-- Unknown or broken templates fall back to a red placeholder instead of breaking the canvas.
-	Create = function(parent, p)
-		local function Placeholder(message)
+	Create = function(parent, p, node)
+		local function Placeholder(message, stack)
 			ns.Print(L["Template %s can't be used: %s"], p.template, message)
+			if ns.Errors and node then
+				ns.Errors:Add({ kind = "template", message = message, stack = stack or "", node = node })
+			end
 			local f = CreateFrame("Frame", nil, parent)
 			local bg = f:CreateTexture(nil, "BACKGROUND")
 			bg:SetAllPoints()
@@ -1399,10 +1402,13 @@ Register({
 		-- build child names from self:GetName() and fail without one.
 		templateCounter = templateCounter + 1
 		local globalName = "ForeverFrameBuilderTemplate" .. templateCounter
-		local captured
+		local captured, capturedStack
 		local previousHandler = geterrorhandler()
 		seterrorhandler(function(message)
-			captured = captured or tostring(message)
+			if not captured then
+				captured = tostring(message)
+				capturedStack = ns.Errors and ns.Errors.Stack(3) or ""
+			end
 		end)
 		local ok, f = pcall(CreateFrame, p.widget, globalName, parent, p.template ~= "" and p.template or nil)
 		if ok and type(f) == "table" and not captured then
@@ -1420,7 +1426,7 @@ Register({
 			if ok and type(f) == "table" then
 				f:Hide()
 			end
-			return Placeholder(captured or "?")
+			return Placeholder(captured or "?", capturedStack)
 		end
 		if f.SetAutoFocus then
 			f:SetAutoFocus(false)

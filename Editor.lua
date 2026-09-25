@@ -235,6 +235,13 @@ function Editor:CreateToolbar()
 
 	local export = W.Button(frame, L["Export"], 90, nil)
 	export:SetPoint("RIGHT", preview, "LEFT", -4, 0)
+
+	local errors = W.Button(frame, "Errors", 90, function()
+		ns.Errors:Toggle()
+	end, L["Recorded errors with template, properties and all scripts – for faster bug fixing."])
+	errors:SetPoint("RIGHT", export, "LEFT", -4, 0)
+	self.errorsButton = errors
+	self:UpdateErrorCount()
 	export:SetScript("OnClick", function(self)
 		MenuUtil.CreateContextMenu(self, ExportMenu)
 	end)
@@ -417,6 +424,14 @@ function Editor:UpdatePreview(preview)
 	self:UpdateHistory()
 end
 
+-- "Errors (3)" in red while something is recorded.
+function Editor:UpdateErrorCount()
+	if not self.errorsButton then return end
+	local count = ns.Errors:Count()
+	self.errorsButton:SetText(count > 0 and ("|cffff4040Errors (" .. count .. ")|r") or "Errors")
+end
+
+ns.On("ERRORS_CHANGED", function() Editor:UpdateErrorCount() end)
 ns.On("PROJECT_CHANGED", function()
 	Editor:UpdateProject()
 	Editor:UpdateStatus()

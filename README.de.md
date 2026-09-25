@@ -9,7 +9,7 @@ Drag-&-Drop-Editor für Ingame-Frames, ähnlich einem Website-Builder. Öffnen m
 
 | Bereich | Funktion |
 |---|---|
-| Toolbar | Projekte, Rückgängig/Wiederholen, Raster/Einrasten, Zoom, Export, Vorschau |
+| Toolbar | Projekte, Rückgängig/Wiederholen, Raster/Einrasten, Zoom, Errors, Export, Vorschau |
 | Elemente (Reiter, links) | Palette in einklappbaren Gruppen (Container, Bedienelemente, Anzeige, Blizzard-Templates): klicken fügt zum ausgewählten Frame hinzu, ziehen legt es an die Cursorposition |
 | Ebenen (Reiter, links) | Baum aller Elemente; Reihenfolge = Zeichenreihenfolge (unten = vorne). Elemente mit Kindern lassen sich mit +/– einklappen (Anzahl versteckter Elemente wird angezeigt); „Alle aufklappen/zuklappen“ im Rechtsklickmenü |
 | Arbeitsfläche | Entspricht `UIParent` (der blaue Rahmen ist dein Bildschirm) |
@@ -125,6 +125,16 @@ Buttons lassen sich klicken, Skripte laufen, verschiebbare Frames lassen sich zi
 - **Teilen-String / Import:** das komplette Projekt als String (nutzt `C_EncodingUtil`). Importierte Skripte vor der Vorschau prüfen!
 
 Projekte werden in `ForeverFrameBuilderDB` (SavedVariables) gespeichert.
+
+## Errors
+
+Der Button **Errors** öffnet ein Protokoll der Fehler im Editor: Templates, die nicht erzeugt werden konnten,
+fehlgeschlagene `OnLoad`/`OnShow`, Eigenschaften, die sich nicht anwenden ließen, Skriptfehler in Vorschau oder Editor
+sowie Lua-Fehler aus dem Addon oder während der Vorschau (die weiterhin an den normalen Fehler-Handler bzw. BugSack
+gehen). Der Button zeigt die Anzahl rot an. Zu jedem Eintrag gibt es einen kopierbaren Bericht mit Zeit, Client- und
+Addon-Version, Projekt, Element, Template (Widget-Typ, Addon, Markierungen, Katalog-Setup-Code), Meldung, Stack,
+Layout, Eigenschaften, den Skripten des Elements und allen übrigen Skripten des Projekts. Gleiche Fehler werden
+zusammengefasst und gezählt; die letzten 50 Einträge bleiben über `/reload` hinweg erhalten.
 
 ## Grenzen
 
