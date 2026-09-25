@@ -393,7 +393,7 @@ function Dialogs:RefreshTemplatePicker()
 					mark = " |cffff4040(!)|r"
 				end
 				row.name:SetText((picker.view == "recommended" and "   " or "") .. item.entry[1] .. mark)
-				row.widget:SetText(item.catalog and item.catalog[6] and ("→ " .. ns.Elements[item.catalog[6]].label) or item.entry[2])
+				row.widget:SetText(item.catalog and item.catalog[6] and ("» " .. ns.Elements[item.catalog[6]].label) or item.entry[2])
 				row:EnableMouse(true)
 			end
 			row:Show()
