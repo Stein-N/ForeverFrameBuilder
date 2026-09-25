@@ -9,9 +9,8 @@ local W = ns.W
 local Panels = {}
 ns.Panels = Panels
 
-local PALETTE_COLUMNS = 2
-local PALETTE_BUTTON_WIDTH = 88
 local PALETTE_ROW_HEIGHT = 24
+local PALETTE_BUTTON_INDENT = 18
 local TREE_ROW_HEIGHT = 18
 local TREE_INDENT = 12
 
@@ -19,37 +18,103 @@ local TREE_INDENT = 12
 -- Palette
 ---------------------------------------------------------------------------
 
+-- Palette groups by kind of element; element types missing here land in the last group.
+local PALETTE_GROUPS = {
+	{ key = "containers", label = L["Containers"], types = { "Frame", "Window", "Tabs", "Section", "ScrollFrame" } },
+	{ key = "controls", label = L["Controls"], types = { "Button", "CheckButton", "EditBox", "Dropdown", "Slider" } },
+	{ key = "display", label = L["Display"], types = { "StatusBar", "Texture", "FontString", "Model" } },
+	{ key = "templates", label = L["Blizzard templates"], types = { "Template" } },
+}
+
+local function CreatePaletteButton(parent, elementType)
+	local def = ns.Elements[elementType]
+	local button = W.Button(parent, def.label, 100)
+	button:RegisterForDrag("LeftButton")
+	button:SetScript("OnClick", function()
+		if not button.dragging then
+			ns.Canvas:AddDefault(elementType)
+		end
+	end)
+	button:SetScript("OnDragStart", function()
+		button.dragging = true
+		ns.Canvas:BeginPaletteDrag(elementType)
+	end)
+	button:SetScript("OnDragStop", function()
+		ns.Canvas:EndPaletteDrag()
+		-- The release may also count as a click; ignore it for this frame.
+		C_Timer.After(0, function() button.dragging = false end)
+	end)
+	W.Tooltip(button, def.label, L["Click to add it to the selected frame, or drag it onto the canvas."])
+	return button
+end
+
 function Panels:CreatePalette(parent)
 	local frame = W.Inset(parent)
+	local _, content = W.ScrollArea(frame)
+	self.paletteContent = content
+
+	local grouped = {}
+	for _, group in ipairs(PALETTE_GROUPS) do
+		for _, elementType in ipairs(group.types) do
+			grouped[elementType] = true
+		end
+	end
+	local last = PALETTE_GROUPS[#PALETTE_GROUPS]
+	for _, elementType in ipairs(ns.ElementOrder) do
+		if not grouped[elementType] then
+			table.insert(last.types, elementType)
+		end
+	end
 
 	self.paletteButtons = {}
-	for i, elementType in ipairs(ns.ElementOrder) do
-		local def = ns.Elements[elementType]
-		local button = W.Button(frame, def.label, PALETTE_BUTTON_WIDTH)
-		local column = (i - 1) % PALETTE_COLUMNS
-		local row = math.floor((i - 1) / PALETTE_COLUMNS)
-		button:SetPoint("TOPLEFT", 7 + column * (PALETTE_BUTTON_WIDTH + 4), -8 - row * PALETTE_ROW_HEIGHT)
-		button:RegisterForDrag("LeftButton")
-		button:SetScript("OnClick", function()
-			if not button.dragging then
-				ns.Canvas:AddDefault(elementType)
+	self.paletteGroups = {}
+	for _, group in ipairs(PALETTE_GROUPS) do
+		local section = "palette." .. group.key
+		local entry = { key = section, buttons = {} }
+		entry.header = W.CategoryHeader(content, function()
+			local sections = ns.db.settings.collapsedSections
+			sections[section] = not sections[section] or nil
+			self:LayoutPalette()
+		end)
+		entry.header:SetTitle(group.label)
+		for _, elementType in ipairs(group.types) do
+			if ns.Elements[elementType] then
+				local button = CreatePaletteButton(content, elementType)
+				table.insert(entry.buttons, button)
+				table.insert(self.paletteButtons, button)
 			end
-		end)
-		button:SetScript("OnDragStart", function()
-			button.dragging = true
-			ns.Canvas:BeginPaletteDrag(elementType)
-		end)
-		button:SetScript("OnDragStop", function()
-			ns.Canvas:EndPaletteDrag()
-			-- The release may also count as a click; ignore it for this frame.
-			C_Timer.After(0, function() button.dragging = false end)
-		end)
-		W.Tooltip(button, def.label, L["Click to add it to the selected frame, or drag it onto the canvas."])
-		table.insert(self.paletteButtons, button)
+		end
+		table.insert(self.paletteGroups, entry)
 	end
 
 	self.palette = frame
+	self:LayoutPalette()
 	return frame
+end
+
+-- Stacks the category headers and, for expanded categories, their full-width buttons.
+function Panels:LayoutPalette()
+	local content = self.paletteContent
+	local offset = 2
+	for _, group in ipairs(self.paletteGroups) do
+		local collapsed = ns.db.settings.collapsedSections[group.key]
+		group.header:ClearAllPoints()
+		group.header:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -offset)
+		group.header:SetPoint("RIGHT", content, "RIGHT")
+		group.header:SetCollapsed(collapsed)
+		offset = offset + group.header:GetHeight() + 2
+		for _, button in ipairs(group.buttons) do
+			button:SetShown(not collapsed)
+			if not collapsed then
+				button:ClearAllPoints()
+				button:SetPoint("TOPLEFT", content, "TOPLEFT", PALETTE_BUTTON_INDENT, -offset)
+				button:SetPoint("RIGHT", content, "RIGHT", -4, 0)
+				offset = offset + PALETTE_ROW_HEIGHT
+			end
+		end
+		offset = offset + 4
+	end
+	content:SetHeight(math.max(1, offset))
 end
 
 ---------------------------------------------------------------------------

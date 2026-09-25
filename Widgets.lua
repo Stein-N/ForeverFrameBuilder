@@ -150,3 +150,41 @@ function W.SetOutlineThickness(frame, thickness)
 	lines[3]:SetWidth(thickness)
 	lines[4]:SetWidth(thickness)
 end
+
+-- Foldable category title in the style of the AddOn list: gold text, a "bag-arrow" that
+-- points right while collapsed and down while expanded, and the quest title highlight.
+function W.CategoryHeader(parent, onToggle)
+	local header = CreateFrame("Button", nil, parent)
+	header:SetHeight(22)
+	local highlight = header:CreateTexture(nil, "HIGHLIGHT")
+	highlight:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
+	highlight:SetBlendMode("ADD")
+	highlight:SetPoint("TOPLEFT", 4, 0)
+	highlight:SetPoint("BOTTOMRIGHT", -4, 0)
+	local arrow = header:CreateTexture(nil, "ARTWORK")
+	arrow:SetAtlas("bag-arrow")
+	arrow:SetSize(10, 16)
+	arrow:SetPoint("LEFT", 12, 0)
+	local title = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	title:SetJustifyH("LEFT")
+	title:SetWordWrap(false)
+	header:SetScript("OnClick", function(self)
+		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+		onToggle(self)
+	end)
+
+	function header:SetTitle(text)
+		title:SetText(text)
+	end
+	function header:SetCollapsed(collapsed)
+		arrow:SetRotation(collapsed and math.pi or math.pi / 2)
+	end
+	-- Space kept free on the right, e.g. for a button next to the title.
+	function header:SetTitleRightInset(inset)
+		title:ClearAllPoints()
+		title:SetPoint("LEFT", arrow, "RIGHT", 8, 0)
+		title:SetPoint("RIGHT", -(inset or 8), 0)
+	end
+	header:SetTitleRightInset(8)
+	return header
+end

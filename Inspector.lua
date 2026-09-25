@@ -253,45 +253,29 @@ function Factories.template(row)
 	browse:SetPoint("LEFT", row.box, "RIGHT", 4, 0)
 end
 
--- Foldable category inside a section, styled like the categories of the AddOn list:
--- gold title with a "bag-arrow" pointing right (collapsed) or down (expanded), and an
--- optional button on the right (e.g. Remove for additional anchors).
+-- Foldable category inside a section (see W.CategoryHeader), with an optional button on
+-- the right (e.g. Remove for additional anchors).
 function Factories.category(row)
-	local button = CreateFrame("Button", nil, row)
-	button:SetAllPoints()
-	local highlight = button:CreateTexture(nil, "HIGHLIGHT")
-	highlight:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
-	highlight:SetBlendMode("ADD")
-	highlight:SetPoint("TOPLEFT", 4, 0)
-	highlight:SetPoint("BOTTOMRIGHT", -4, 0)
-	local arrow = button:CreateTexture(nil, "ARTWORK")
-	arrow:SetAtlas("bag-arrow")
-	arrow:SetSize(10, 16)
-	arrow:SetPoint("LEFT", 12, 0)
-	local title = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	title:SetJustifyH("LEFT")
-	title:SetWordWrap(false)
+	local header = W.CategoryHeader(row, function()
+		Inspector:ToggleSection(row.field.section)
+	end)
+	header:SetAllPoints()
 	local action = W.Button(row, "", 76)
 	action:SetHeight(18)
 	action:SetPoint("RIGHT", -8, 0)
-	action:SetFrameLevel(button:GetFrameLevel() + 2)
+	action:SetFrameLevel(header:GetFrameLevel() + 2)
 	action:SetScript("OnClick", function()
 		row.field.action()
 	end)
-	button:SetScript("OnClick", function()
-		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
-		Inspector:ToggleSection(row.field.section)
-	end)
+	row.header = header
 	row.Setup = function(self, field)
 		action:SetShown(field.action ~= nil)
 		action:SetText(field.actionText or "")
-		title:ClearAllPoints()
-		title:SetPoint("LEFT", arrow, "RIGHT", 8, 0)
-		title:SetPoint("RIGHT", field.action and -90 or -8, 0)
-		arrow:SetRotation(Inspector:IsCollapsed(field.section) and math.pi or math.pi / 2)
+		header:SetTitleRightInset(field.action and 90 or 8)
+		header:SetCollapsed(Inspector:IsCollapsed(field.section))
 	end
 	row.Refresh = function(self)
-		title:SetText(self.field.getTitle and self.field.getTitle() or self.field.label)
+		header:SetTitle(self.field.getTitle and self.field.getTitle() or self.field.label)
 	end
 end
 

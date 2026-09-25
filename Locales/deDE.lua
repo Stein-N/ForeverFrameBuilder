@@ -238,3 +238,8 @@ L["(Parent)"] = "(Eltern-Element)"
 L["Anchor point %d"] = "Ankerpunkt %d"
 L["Remove"] = "Entfernen"
 L["Add anchor point"] = "Ankerpunkt hinzufügen"
+
+-- Palette groups
+L["Containers"] = "Container"
+L["Controls"] = "Bedienelemente"
+L["Display"] = "Anzeige"
