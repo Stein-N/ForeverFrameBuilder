@@ -1,0 +1,26 @@
+## Interface: 16001, 120100
+## Title: Forever Frame Builder
+## Version: 0.1.0
+## Author: Morthen
+## Notes: Drag & drop editor for building in-game frames and exporting them as Lua code.
+## Category: Morthen UI
+## SavedVariables: ForeverFrameBuilderDB
+## IconTexture: Interface\Icons\INV_Misc_Wrench_01
+## AddonCompartmentFunc: ForeverFrameBuilder_OnAddonCompartmentClick
+
+# Localization: enUS is the base, every other file overrides only what it translates
+Locales\enUS.lua
+Locales\deDE.lua
+
+Core.lua
+Data\Templates.lua
+Data\Catalog.lua
+Elements.lua
+Document.lua
+Exporter.lua
+Widgets.lua
+Canvas.lua
+Panels.lua
+Inspector.lua
+Dialogs.lua
+Editor.lua
