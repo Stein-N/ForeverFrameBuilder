@@ -44,6 +44,9 @@ moved on their own: dragging them moves the parent.
 
 ### Anchor points
 
+The Layout section is split into foldable categories like the AddOn list: **General** (fill parent, width, height,
+alpha, shown, strata) followed by one category per anchor point, whose title summarizes it (e.g. `TOPLEFT » Frame1`).
+
 Every element starts with one anchor point. Under Layout, **Add anchor point** adds more (e.g. `TOPLEFT` and
 `BOTTOMRIGHT`, so the element stretches with whatever it is anchored to); **Remove** deletes an additional one. Each
 anchor has its own point, relative point, offsets and **Relative to** target: the parent or any other element, such as

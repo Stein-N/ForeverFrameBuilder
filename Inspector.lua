@@ -14,6 +14,7 @@ ns.Inspector = Inspector
 
 local ROW_HEIGHT = 26
 local HEADER_HEIGHT = 30
+local CATEGORY_HEIGHT = 22
 local LABEL_WIDTH = 92
 local CONTROL_LEFT = LABEL_WIDTH + 14
 
@@ -252,20 +253,45 @@ function Factories.template(row)
 	browse:SetPoint("LEFT", row.box, "RIGHT", 4, 0)
 end
 
--- Title of an additional anchor with a button on the right (Remove).
-function Factories.subheader(row)
-	row.text = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-	row.text:SetPoint("LEFT", 8, 0)
-	row.text:SetTextColor(1, 1, 1)
-	local button = W.Button(row, "", 80)
-	button:SetHeight(20)
-	button:SetPoint("RIGHT", -8, 0)
-	button:SetScript("OnClick", function()
+-- Foldable category inside a section, styled like the categories of the AddOn list:
+-- gold title with a "bag-arrow" pointing right (collapsed) or down (expanded), and an
+-- optional button on the right (e.g. Remove for additional anchors).
+function Factories.category(row)
+	local button = CreateFrame("Button", nil, row)
+	button:SetAllPoints()
+	local highlight = button:CreateTexture(nil, "HIGHLIGHT")
+	highlight:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
+	highlight:SetBlendMode("ADD")
+	highlight:SetPoint("TOPLEFT", 4, 0)
+	highlight:SetPoint("BOTTOMRIGHT", -4, 0)
+	local arrow = button:CreateTexture(nil, "ARTWORK")
+	arrow:SetAtlas("bag-arrow")
+	arrow:SetSize(10, 16)
+	arrow:SetPoint("LEFT", 12, 0)
+	local title = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	title:SetJustifyH("LEFT")
+	title:SetWordWrap(false)
+	local action = W.Button(row, "", 76)
+	action:SetHeight(18)
+	action:SetPoint("RIGHT", -8, 0)
+	action:SetFrameLevel(button:GetFrameLevel() + 2)
+	action:SetScript("OnClick", function()
 		row.field.action()
 	end)
+	button:SetScript("OnClick", function()
+		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+		Inspector:ToggleSection(row.field.section)
+	end)
 	row.Setup = function(self, field)
-		self.text:SetText(field.label)
-		button:SetText(field.actionText)
+		action:SetShown(field.action ~= nil)
+		action:SetText(field.actionText or "")
+		title:ClearAllPoints()
+		title:SetPoint("LEFT", arrow, "RIGHT", 8, 0)
+		title:SetPoint("RIGHT", field.action and -90 or -8, 0)
+		arrow:SetRotation(Inspector:IsCollapsed(field.section) and math.pi or math.pi / 2)
+	end
+	row.Refresh = function(self)
+		title:SetText(self.field.getTitle and self.field.getTitle() or self.field.label)
 	end
 end
 
@@ -308,7 +334,7 @@ function Inspector:AcquireRow(kind)
 	if not row then
 		row = CreateFrame("Frame", nil, self.content)
 		row.kind = kind
-		if kind ~= "header" and kind ~= "subheader" then
+		if kind ~= "header" and kind ~= "category" then
 			row.label = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 			row.label:SetPoint("LEFT", 8, 0)
 			row.label:SetWidth(LABEL_WIDTH)
@@ -333,7 +359,7 @@ end
 function Inspector:AddRow(field)
 	local row = self:AcquireRow(field.kind)
 	row.field = field
-	local height = field.kind == "header" and HEADER_HEIGHT or ROW_HEIGHT
+	local height = (field.kind == "header" and HEADER_HEIGHT) or (field.kind == "category" and CATEGORY_HEIGHT) or ROW_HEIGHT
 	row:SetHeight(height)
 	row:ClearAllPoints()
 	row:SetPoint("TOPLEFT", self.content, "TOPLEFT", 0, -self.offset)
@@ -431,8 +457,19 @@ function Inspector:BuildFields(id)
 	})
 
 	Add({ kind = "header", label = L["Layout"], section = "layout" })
+
+	-- General: size and display settings.
+	Add({ kind = "category", label = L["General"], section = "layout.general" })
 	NodeField("bool", L["Fill parent"], "fill")
-	-- One block per anchor point; the first one can't be removed.
+	NodeField("number", L["Width"], "w", { step = 1, min = 1 })
+	NodeField("number", L["Height"], "h", { step = 1, min = 1 })
+	NodeField("number", L["Alpha"], "alpha", { step = 0.05, min = 0, max = 1 })
+	NodeField("bool", L["Shown"], "shown")
+	if not def.region then
+		NodeField("select", L["Strata"], "strata", { options = ns.STRATAS })
+	end
+
+	-- One category per anchor point; the first one can't be removed.
 	if not node.fill then
 		for index = 1, #Doc.GetAnchors(node) do
 			local function A()
@@ -446,12 +483,19 @@ function Inspector:BuildFields(id)
 					Doc:SetAnchors(id, list, noCheckpoint, mergeKey and (mergeKey .. ":" .. id .. ":" .. index))
 				end
 			end
-			if index > 1 then
-				Add({
-					kind = "subheader", label = L["Anchor point %d"]:format(index), actionText = L["Remove"],
-					action = function() ns.Canvas:RemoveAnchor(id, index) end,
-				})
-			end
+			Add({
+				kind = "category", label = L["Anchor point %d"]:format(index), section = "layout.anchor" .. index,
+				-- The title summarizes the anchor so it stays readable while folded.
+				getTitle = function()
+					local a = A()
+					if not a then return "" end
+					local target = a.target ~= 0 and Doc:Get(a.target)
+					return ("%s  |cffaaaaaa%s » %s|r"):format(L["Anchor point %d"]:format(index), a.point,
+						target and target.name or L["(Parent)"])
+				end,
+				action = index > 1 and function() ns.Canvas:RemoveAnchor(id, index) end or nil,
+				actionText = L["Remove"],
+			})
 			Add({
 				kind = "select", label = L["Anchor"], options = ns.POINTS,
 				get = function() local a = A() return a and a.point end,
@@ -472,15 +516,10 @@ function Inspector:BuildFields(id)
 			Add({ kind = "number", label = L["Y offset"], step = 1, get = function() local a = A() return a and a.y end, set = SetOffset("y") })
 		end
 		if #Doc.GetAnchors(node) < #ns.POINTS then
-			Add({ kind = "action", label = "", text = L["Add anchor point"], action = function() ns.Canvas:AddAnchor(id) end })
+			-- Belongs to the section, not to the last anchor's category.
+			Add({ kind = "action", label = "", text = L["Add anchor point"], outside = true,
+				action = function() ns.Canvas:AddAnchor(id) end })
 		end
-	end
-	NodeField("number", L["Width"], "w", { step = 1, min = 1 })
-	NodeField("number", L["Height"], "h", { step = 1, min = 1 })
-	NodeField("number", L["Alpha"], "alpha", { step = 0.05, min = 0, max = 1 })
-	NodeField("bool", L["Shown"], "shown")
-	if not def.region then
-		NodeField("select", L["Strata"], "strata", { options = ns.STRATAS })
 	end
 
 	if #def.props > 0 then
@@ -570,13 +609,22 @@ function Inspector:Rebuild()
 	self.builtFill = node and node.fill
 	self.builtAnchors = node and #node.anchors
 	if node then
-		-- Rows of a collapsed section are skipped; its header stays.
-		local collapsed = false
+		-- Rows of a collapsed section or category are skipped; their headers stay.
+		local sectionCollapsed, categoryCollapsed = false, false
 		for _, field in ipairs(self:BuildFields(id)) do
 			if field.kind == "header" then
-				collapsed = self:IsCollapsed(field.section)
+				sectionCollapsed = self:IsCollapsed(field.section)
+				categoryCollapsed = false
 				self:AddRow(field)
-			elseif not collapsed then
+			elseif sectionCollapsed then
+				-- hidden with its section
+			elseif field.kind == "category" then
+				categoryCollapsed = self:IsCollapsed(field.section)
+				self:AddRow(field)
+			elseif field.outside then
+				categoryCollapsed = false
+				self:AddRow(field)
+			elseif not categoryCollapsed then
 				self:AddRow(field)
 			end
 		end

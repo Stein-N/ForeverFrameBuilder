@@ -36,6 +36,10 @@ Solche Elemente werden nicht selbst verschoben: Ziehen bewegt das Eltern-Element
 
 ### Ankerpunkte
 
+Der Bereich Layout ist wie die AddOn-Liste in einklappbare Kategorien geteilt: **Allgemein** (Eltern füllen, Breite,
+Höhe, Deckkraft, Sichtbar, Strata), danach eine Kategorie pro Ankerpunkt, deren Titel ihn zusammenfasst
+(z. B. `TOPLEFT » Frame1`).
+
 Jedes Element hat zunächst einen Ankerpunkt. Unter Layout fügt **Ankerpunkt hinzufügen** weitere hinzu (z. B. `TOPLEFT`
 und `BOTTOMRIGHT`, damit sich das Element mit seinem Bezug mitdehnt); **Entfernen** löscht einen zusätzlichen. Jeder Anker
 hat eigenen Punkt, Bezugspunkt, Versatz und ein eigenes **Relativ zu**: das Eltern-Element oder ein beliebiges anderes
