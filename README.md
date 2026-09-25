@@ -1,109 +1,133 @@
 # Forever Frame Builder
 
-Drag-&-Drop-Editor für Ingame-Frames, ähnlich einem Website-Builder. Öffnen mit `/ffb`
-(oder `/framebuilder`, oder über das Addon-Kompartiment an der Minimap). `/ffb reset` setzt die Fensterposition zurück.
+*[Deutsche Version](README.de.md)*
 
-## Aufbau des Fensters
+A drag & drop editor for in-game frames in **World of Warcraft: Forever**, similar to a website builder. Design windows,
+tabs, buttons, dropdowns and more directly in the game, try them out in a live preview and export them as plain Lua
+code for your own addon.
 
-| Bereich | Funktion |
+## Installation
+
+Copy the `ForeverFrameBuilder` folder into `World of Warcraft/_classic_beta_/Interface/AddOns/` and enable the addon.
+
+Open the editor with `/ffb` (or `/framebuilder`, or through the addon compartment on the minimap).
+`/ffb reset` resets the window position.
+
+## The editor window
+
+| Area | Purpose |
 |---|---|
-| Toolbar | Projekte, Rückgängig/Wiederholen, Raster/Einrasten, Zoom, Export, Vorschau |
-| Elemente | Palette: klicken fügt zum ausgewählten Frame hinzu, ziehen legt es an die Cursorposition |
-| Ebenen | Baum aller Elemente; Reihenfolge = Zeichenreihenfolge (unten = vorne) |
-| Arbeitsfläche | Entspricht `UIParent` (der blaue Rahmen ist dein Bildschirm) |
-| Eigenschaften | Name, Eltern-Element, Anker, Größe, Aussehen und Skripte des ausgewählten Elements |
+| Toolbar | Projects, undo/redo, grid/snap, zoom, export, preview |
+| Elements | Palette: click adds to the selected frame, drag places it at the cursor |
+| Layers | Tree of all elements; order = draw order (lower = in front) |
+| Canvas | Represents `UIParent` (the blue outline is your screen) |
+| Properties | Name, parent, anchor, size, appearance and scripts of the selected element |
 
-## Bedienung
+## Controls
 
-- **Verschieben:** ziehen. Shift+Ziehen bewegt die aktuelle Auswahl, auch wenn sie verdeckt ist.
-- **Verschachteln:** beim Loslassen Strg halten, dann landet das Element im Frame unter dem Cursor (grün markiert).
-  Alternativ im Rechtsklickmenü unter „Verschieben in“ oder in den Eigenschaften unter „Eltern-Element“.
-- **Größe ändern:** an den blauen Griffen ziehen. Die gegenüberliegende Kante bleibt stehen, egal welcher Anker gesetzt ist.
-- **Anker ändern:** Das Element bleibt dabei an seiner Stelle, die Offsets werden umgerechnet.
-- **Ansicht:** mittlere Maustaste oder Alt+Ziehen verschiebt, das Mausrad zoomt zum Cursor.
-- **Tasten:** Pfeile (Shift: ein Rasterschritt), Entf, Strg+Z/Y, Strg+C/V, Strg+D, Esc hebt die Auswahl auf.
-- **Zahlenfelder:** Mausrad ändert den Wert (Shift: ×10).
+- **Move:** drag. Shift+drag moves the current selection even if it is covered by other elements.
+- **Nest:** hold Ctrl when releasing to drop the element into the frame under the cursor (highlighted in green).
+  Alternatively use "Move into" in the right-click menu or "Parent" in the properties.
+- **Resize:** drag the blue handles. The opposite edge stays in place, whatever anchor is set.
+- **Change anchors:** the element stays where it is; the offsets are recalculated.
+- **View:** middle mouse button or Alt+drag pans, the mouse wheel zooms towards the cursor.
+- **Keys:** arrows nudge (Shift: one grid step), Del, Ctrl+Z/Y, Ctrl+C/V, Ctrl+D, Esc clears the selection.
+- **Number fields:** the mouse wheel changes the value (Shift: ×10).
 
-## Elemente
+## Elements
 
-Frame (mit Backdrop), Fenster, Reiter, aufklappbarer Abschnitt, Scrollbereich, Button, Checkbox, Eingabefeld, Dropdown, Schieberegler, Statusleiste,
-Textur, Text (FontString), 3D-Modell und **Template** (jedes Blizzard-Template).
+Frame (with backdrop), Window, Tabs, Collapsible section, Scroll frame, Button, Checkbox, Input box, Dropdown, Slider,
+Status bar, Texture, Text (FontString), 3D model and **Template** (any Blizzard template).
 
-**Eltern füllen** (unter Layout) verankert ein Element an allen Kanten seines Eltern-Elements (`SetAllPoints`).
-Solche Elemente werden nicht selbst verschoben: Ziehen bewegt das Eltern-Element.
+**Fill parent** (under Layout) anchors an element to all edges of its parent (`SetAllPoints`). Such elements are not
+moved on their own: dragging them moves the parent.
 
-### Fenster
+### Window
 
-Blizzard-Fenster-Templates mit Titel, Schließen-Button, Porträt und Button-Leiste (je nach Stil):
+Blizzard window templates with title, close button, portrait and button bar (depending on the style):
 `ButtonFrameTemplate`, `PortraitFrameTemplate`, `BasicFrameTemplate(WithInset)`, `DefaultPanel(Flat)Template`,
 `UIPanelDialogTemplate`, `SimplePanelTemplate`, `InsetFrameTemplate`, `DialogBorder(Dark)Template`.
 
-### Reiter
+### Tabs
 
-Ein Reiter-Container mit `PanelTabButtonTemplate` (unten), `PanelTopTabButtonTemplate` (oben) oder
-`LargeSideTabButtonTemplate` (Seite: Symbol-Reiter rechts am Rand, wie im Forever-Sammlungsfenster; die Reiter-Namen
-werden dort zu Tooltips, die Symbole stehen im Feld „Symbole“, ebenfalls durch `;` getrennt).
-Die Reiter-Namen stehen durch `;` getrennt in einem Feld. Jedes direkte Kind ist eine Seite (Kind 1 = Reiter 1 …);
-beim Anlegen wird pro Reiter eine leere Seite erzeugt, die ihr Eltern-Element füllt. Im Editor wechselt ein Klick auf
-einen Reiter die Seite, und beim Auswählen eines Elements auf einer verdeckten Seite wird deren Reiter aktiv.
-Der Export enthält `E.<Name>:SelectTab(index)` und `E.<Name>.Pages`; das Skript `OnTabSelected(self, index)` wird bei jedem Wechsel aufgerufen.
+A tab container using `PanelTabButtonTemplate` (bottom), `PanelTopTabButtonTemplate` (top) or
+`LargeSideTabButtonTemplate` (side: icon tabs along the right edge, as in the Forever collections journal; there the
+tab names become tooltips and the icons go into the "Icons" field, also separated by `;`).
 
-### Aufklappbarer Abschnitt
+Tab names are entered in one field, separated by `;`. Every direct child is a page (child 1 = tab 1, …); a new
+container gets one empty page per tab that fills its parent. In the editor, clicking a tab switches the page, and
+selecting an element on a hidden page activates its tab. The export contains `E.<Name>:SelectTab(index)` and
+`E.<Name>.Pages`; the script `OnTabSelected(self, index)` is called on every change.
 
-Eine Listen-Überschrift (`ListHeaderVisualTemplate`) mit +/–-Button. Ihre Kinder sind der Inhalt des Abschnitts und
-werden im zugeklappten Zustand ausgeblendet; beim Anlegen entsteht ein leerer Inhalts-Frame unter der Überschrift.
-Im Editor klappt ein Klick auf +/– um, in der Vorschau ein Klick auf die ganze Überschrift. Export:
-`E.<Name>:SetCollapsed(true/false)`, Skript `OnToggle(self, collapsed)`. Elemente unterhalb rücken beim Zuklappen
-**nicht** automatisch nach oben.
+### Collapsible section
+
+A list header (`ListHeaderVisualTemplate`) with a +/- button. Its children are the section content and are hidden
+while it is collapsed; a new section gets an empty content frame below the header. In the editor a click on +/-
+toggles it, in the preview a click on the whole header. Export: `E.<Name>:SetCollapsed(true/false)`, script
+`OnToggle(self, collapsed)`. Elements below the section do **not** move up automatically when it collapses.
 
 ### Dropdown
 
-Deckt alle eigenständig nutzbaren Dropdowns des modernen Menüsystems ab: `WowStyle1DropdownTemplate` (Standard),
-`WowStyle2DropdownTemplate` (Einstellungs-Stil), `WowStyle1FilterDropdownTemplate` (Filter-Button),
-`WowStyle1ArrowDropdownTemplate`, `UIPanelIconDropdownButtonTemplate` (Zahnrad) und `UIPanelArrowDropdownButtonTemplate`.
-Einträge stehen durch `;` getrennt in einem Feld (`-` = Trennlinie, `#Text` = Überschrift). Modi: Einfachauswahl (Radio),
-Mehrfachauswahl (Checkboxen) oder Aktionen (Buttons). Optional mit Pfeil-Steppern links/rechts (Einfachauswahl).
-Skript `OnSelect(self, index, text, checked)`; `index` zählt nur echte Einträge. Export: `SetupMenu` mit `E.<Name>.Selected`.
+Covers every dropdown of the modern menu system that works on its own: `WowStyle1DropdownTemplate` (standard),
+`WowStyle2DropdownTemplate` (settings style), `WowStyle1FilterDropdownTemplate` (filter button),
+`WowStyle1ArrowDropdownTemplate`, `UIPanelIconDropdownButtonTemplate` (gear) and `UIPanelArrowDropdownButtonTemplate`.
+
+Entries are entered in one field, separated by `;` (`-` = divider, `#Text` = title). Modes: single choice (radio),
+multiple choice (checkboxes) or actions (buttons). Single choice can get arrow steppers on both sides. Script
+`OnSelect(self, index, text, checked)`; `index` counts real entries only. Export: `SetupMenu` with `E.<Name>.Selected`.
 
 ### Template
 
-Erzeugt ein Widget aus einem beliebigen Blizzard-Template. Mit „…“ öffnest du eine durchsuchbare Liste aller
-Templates, die der Client nach dem Login geladen hat (Widget-Typ und Standardgröße werden übernommen – auch
-Größen, die ein Template erst in seinem `OnLoad` setzt). Listen-Überschriften bekommen ihren Text über `SetHeaderText`. Die Ansicht
-**Empfohlen** zeigt den kuratierten Katalog (siehe `TEMPLATES.md`) nach Kategorien, mit Beschreibung und – wo nötig –
-Setup-Code, der als `OnLoad` eingetragen wird. „OnLoad im Editor ausführen“ lässt diesen Code auch auf der Arbeitsfläche
-laufen, damit z. B. Regler schon initialisiert aussehen. **Allgemein** zeigt alle Templates der geteilten Blizzard-Addons,
-**Alle** jedes geladene Template. Unbekannte oder fehlerhafte Templates erscheinen als roter Platzhalter. Die Liste (`Data/Templates.lua`) erzeugt
-`python3 Tools/build_templates.py [/pfad/zu/wow-ui-source]` aus dem UI-Source. Das Skript wertet die TOC-Dateien wie der
-Forever-Client aus (Spieltyp `camelot`, `[Family]` = Mainline, `[Game]` = Camelot, Zeilen-Bedingungen, XML-`<Include>`s,
-ohne Load-on-Demand- und Login-Screen-Addons).
+Creates a widget from any Blizzard template. The "…" button opens a searchable list of every template the client
+loads at login; widget type and default size are taken over, including sizes a template only sets in its `OnLoad`.
+List headers get their text through `SetHeaderText`.
 
-### Scrollbereiche
+- **Recommended** shows the curated catalog (see [TEMPLATES.md](TEMPLATES.md), German) by category, with a
+  description and, where needed, setup code that is entered as `OnLoad`. "Run OnLoad in editor" also runs this code on
+  the canvas, so that e.g. sliders already look initialized.
+- **General** shows all templates of the shared Blizzard addons, **All** every loaded template.
+- Templates marked with a red **(!)** only work through a derived template (their `OnLoad` expects keys such as
+  `fontName` or child frames such as `.Dropdown`). They, and templates whose `OnLoad` fails, are created as a red
+  placeholder instead of raising Lua errors.
 
-Ein Scrollbereich ist ein `ScrollFrame` mit einem Inhalts-Frame (`E.<Name>.Content`) als Scroll-Child.
-Elemente, die du hineinziehst, landen im Inhalt und werden an ihm verankert. Die Inhaltshöhe legst du in den
-Eigenschaften fest; die Inhaltsbreite folgt der Frame-Breite, solange sie 0 ist.
-Im Editor scrollt **Strg+Mausrad** über dem Bereich den Inhalt (alternativ „Scrollposition (Editor)“), damit du
-auch weiter unten liegende Elemente erreichst. Elemente außerhalb des sichtbaren Ausschnitts lassen sich auf der
-Arbeitsfläche nicht anklicken, wohl aber über die Ebenenliste.
-Mit „Scrollleiste“ wird `ScrollFrameTemplate` samt Leiste rechts neben dem Frame exportiert, ohne Leiste ein
-schlichter ScrollFrame mit Mausrad-Scrollen.
+The list (`Data/Templates.lua`) is generated from the Blizzard UI source with
+`python3 Tools/build_templates.py [/path/to/wow-ui-source]`. The script evaluates the TOC files the way the Forever
+client does (game type `camelot`, `[Family]` = Mainline, `[Game]` = Camelot, per-line conditions, XML `<Include>`s,
+without load-on-demand and login screen addons).
 
-## Skripte und Vorschau
+### Scroll frame
 
-Jedes Element hat Skript-Slots (`OnLoad`, `OnClick`, `OnValueChanged` …). Im Skript ist `self` das Element,
-andere Elemente erreichst du über `E.<Name>`, z. B. `E.MainFrame:Hide()`. **Vorschau** macht alles aktiv:
-Buttons lassen sich klicken, Skripte laufen, verschiebbare Frames lassen sich ziehen. „Bearbeiten“ stellt den Entwurf wieder her.
+A `ScrollFrame` with a content frame (`E.<Name>.Content`) as scroll child. Elements you drag into it end up in the
+content and are anchored to it. The content height is set in the properties; the content width follows the frame
+width as long as it is 0.
+
+In the editor, **Ctrl+mouse wheel** over the frame scrolls its content (or use "Scroll position (editor)"), so you can
+reach elements further down. Elements outside the visible area cannot be clicked on the canvas, but they can be
+selected in the layer list. With "Scroll bar" the export uses `ScrollFrameTemplate` with its bar to the right of the
+frame; without it, a plain scroll frame with mouse wheel scrolling.
+
+## Scripts and preview
+
+Every element has script slots (`OnLoad`, `OnClick`, `OnValueChanged`, …). Inside a script `self` is the element;
+other elements are reachable through `E.<Name>`, e.g. `E.MainFrame:Hide()`. **Preview** makes everything live:
+buttons can be clicked, scripts run and movable frames can be dragged. "Edit mode" restores the design.
 
 ## Export
 
-- **Lua-Code:** eigenständiger Code (`CreateFrame` …), den du direkt in ein Addon kopieren kannst. Alle Elemente liegen in der Tabelle `E`.
-- **Teilen-String / Import:** das komplette Projekt als String (nutzt `C_EncodingUtil`). Importierte Skripte vor der Vorschau prüfen!
+- **Lua code:** standalone code (`CreateFrame` …) you can paste straight into an addon. All elements are stored in
+  the table `E`.
+- **Share string / import:** the whole project as a string (uses `C_EncodingUtil`). Review imported scripts before
+  using the preview!
 
-Projekte werden in `ForeverFrameBuilderDB` (SavedVariables) gespeichert.
+Projects are saved in `ForeverFrameBuilderDB` (SavedVariables).
 
-## Grenzen
+## Limitations
 
-- Frames können in WoW nicht zerstört werden. Der Editor verwendet sie wieder; nur Widgets, die in der Vorschau Skript-Hooks bekommen haben, werden verworfen.
-- Die Strata eines Elements wird nur exportiert, auf der Arbeitsfläche aber nicht angewendet.
-- 3D-Modelle ignorieren teilweise das Clipping der Arbeitsfläche.
+- Frames cannot be destroyed in WoW. The editor reuses them; only widgets that received script hooks in the preview
+  are discarded.
+- An element's strata is only exported, it is not applied on the canvas.
+- 3D models partly ignore the canvas clipping.
+
+## Localization
+
+English and German (`Locales/`). The German file only overrides what it translates.
