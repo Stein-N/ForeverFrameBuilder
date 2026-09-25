@@ -230,7 +230,7 @@ L["Tip: the element \"%s\" covers this template with more options."] = "Tipp: Da
 L["Adds this OnLoad code:"] = "Fügt diesen OnLoad-Code hinzu:"
 L["Template %s can't be used: %s"] = "Template %s kann nicht verwendet werden: %s"
 L["it only works through a derived template that provides: %s"] = "es funktioniert nur über ein abgeleitetes Template, das Folgendes liefert: %s"
-L["Not usable on its own: its OnLoad expects %s from a derived template."] = "Nicht eigenständig nutzbar: Sein OnLoad erwartet %s aus einem abgeleiteten Template."
+L["Not usable on its own: its OnLoad/OnShow expects %s from a derived template or a specific parent frame."] = "Nicht eigenständig nutzbar: Sein OnLoad/OnShow erwartet %s aus einem abgeleiteten Template oder einem bestimmten Eltern-Frame."
 
 -- Anchors
 L["Relative point"] = "Bezugspunkt"
@@ -245,3 +245,4 @@ L["Controls"] = "Bedienelemente"
 L["Display"] = "Anzeige"
 L["Expand all"] = "Alle aufklappen"
 L["Collapse all"] = "Alle zuklappen"
+L["Uses self:GetName(): it gets a global name automatically (also in the export)."] = "Nutzt self:GetName(): Es bekommt automatisch einen globalen Namen (auch im Export)."

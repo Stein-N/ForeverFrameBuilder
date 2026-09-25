@@ -305,7 +305,9 @@ local function CreatePickerRow(picker)
 			GameTooltip:AddLine(L["Default size: %d x %d"]:format(entry[4], entry[5]), 0.7, 0.7, 0.7)
 		end
 		if entry[7] then
-			GameTooltip:AddLine(L["Not usable on its own: its OnLoad expects %s from a derived template."]:format(entry[7]), 1, 0.3, 0.3, true)
+			GameTooltip:AddLine(L["Not usable on its own: its OnLoad/OnShow expects %s from a derived template or a specific parent frame."]:format(entry[7]), 1, 0.3, 0.3, true)
+		elseif entry[8] then
+			GameTooltip:AddLine(L["Uses self:GetName(): it gets a global name automatically (also in the export)."], 1, 0.82, 0, true)
 		end
 		if catalog and catalog[6] then
 			GameTooltip:AddLine(L["Tip: the element \"%s\" covers this template with more options."]:format(

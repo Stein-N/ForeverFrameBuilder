@@ -92,7 +92,12 @@ Größen, die ein Template erst in seinem `OnLoad` setzt). Listen-Überschriften
 **Empfohlen** zeigt den kuratierten Katalog (siehe `TEMPLATES.md`) nach Kategorien, mit Beschreibung und – wo nötig –
 Setup-Code, der als `OnLoad` eingetragen wird. „OnLoad im Editor ausführen“ lässt diesen Code auch auf der Arbeitsfläche
 laufen, damit z. B. Regler schon initialisiert aussehen. **Allgemein** zeigt alle Templates der geteilten Blizzard-Addons,
-**Alle** jedes geladene Template. Unbekannte oder fehlerhafte Templates erscheinen als roter Platzhalter. Die Liste (`Data/Templates.lua`) erzeugt
+**Alle** jedes geladene Template. Unbekannte oder fehlerhafte Templates erscheinen als roter Platzhalter. Ein rotes **(!)** heißt: Das Template funktioniert nur über ein abgeleitetes
+Template oder unter einem bestimmten Eltern-Frame (sein `OnLoad`/`OnShow` erwartet Schlüssel wie `fontName`, Kind-Elemente
+wie `.Dropdown` oder Methoden seines Eltern-Frames). Fehler aus `OnLoad` und `OnShow` werden abgefangen – jedes neue
+Template wird dafür einmal unsichtbar angezeigt. Jedes Template-Widget bekommt im Editor einen eindeutigen globalen Namen,
+weil viele ältere Templates Kind-Namen aus `self:GetName()` bauen; im Export bekommen Templates, die einen brauchen,
+`<Projekt>_<Name>`, sofern du keinen globalen Namen setzt. Die Liste (`Data/Templates.lua`) erzeugt
 `python3 Tools/build_templates.py [/pfad/zu/wow-ui-source]` aus dem UI-Source. Das Skript wertet die TOC-Dateien wie der
 Forever-Client aus (Spieltyp `camelot`, `[Family]` = Mainline, `[Game]` = Camelot, Zeilen-Bedingungen, XML-`<Include>`s,
 ohne Load-on-Demand- und Login-Screen-Addons).

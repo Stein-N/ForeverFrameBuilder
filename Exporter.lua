@@ -70,6 +70,11 @@ function Exporter:ToLua()
 			out(def.ExportCreate(v, parentVar, node.props))
 		else
 			local globalName = node.globalName ~= "" and ns.LuaStr(node.globalName) or "nil"
+			local generated = node.globalName == "" and def.ExportGlobalName and def.ExportGlobalName(node)
+			if generated then
+				out("-- This template uses self:GetName(), so it needs a global name.")
+				globalName = ns.LuaStr(generated)
+			end
 			local templateName = def.template
 			if def.ExportTemplate then
 				templateName = def.ExportTemplate(node.props)

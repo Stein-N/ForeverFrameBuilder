@@ -1313,6 +1313,20 @@ Register({
 -- Template (any Blizzard template)
 ---------------------------------------------------------------------------
 
+local templateCounter = 0
+local probeFrame
+
+-- A shown but invisible frame, used to trigger a new widget's OnShow once.
+local function ProbeFrame()
+	if not probeFrame then
+		probeFrame = CreateFrame("Frame", nil, UIParent)
+		probeFrame:SetSize(1, 1)
+		probeFrame:SetPoint("TOPLEFT", UIParent, "BOTTOMRIGHT", 100, -100)
+		probeFrame:SetAlpha(0)
+	end
+	return probeFrame
+end
+
 local WIDGET_TYPES = {
 	"Frame", "Button", "CheckButton", "EditBox", "Slider", "StatusBar", "ScrollFrame",
 	"EventFrame", "EventButton", "DropdownButton", "Cooldown", "PlayerModel", "ModelScene",
@@ -1350,6 +1364,13 @@ Register({
 	ExportTemplate = function(p)
 		return p.template ~= "" and p.template or nil
 	end,
+	-- Templates that build names from self:GetName() need a global name in the export too.
+	ExportGlobalName = function(node)
+		local info = ns.GetTemplateInfo(node.props.template)
+		if info and info[8] then
+			return ns.SanitizeName(ns.Doc:CurrentName()) .. "_" .. node.name
+		end
+	end,
 	-- Unknown or broken templates fall back to a red placeholder instead of breaking the canvas.
 	Create = function(parent, p)
 		local function Placeholder(message)
@@ -1372,13 +1393,25 @@ Register({
 		end
 
 		-- Errors inside the template's OnLoad go to the error handler instead of failing
-		-- CreateFrame, so they are captured there for the duration of the call.
+		-- CreateFrame, so they are captured there for the duration of the call. The widget is
+		-- also shown once on an invisible frame so errors in OnShow are caught here too, not
+		-- later on the canvas. Every template gets a unique global name: many (older) ones
+		-- build child names from self:GetName() and fail without one.
+		templateCounter = templateCounter + 1
+		local globalName = "ForeverFrameBuilderTemplate" .. templateCounter
 		local captured
 		local previousHandler = geterrorhandler()
 		seterrorhandler(function(message)
 			captured = captured or tostring(message)
 		end)
-		local ok, f = pcall(CreateFrame, p.widget, nil, parent, p.template ~= "" and p.template or nil)
+		local ok, f = pcall(CreateFrame, p.widget, globalName, parent, p.template ~= "" and p.template or nil)
+		if ok and type(f) == "table" and not captured then
+			pcall(function()
+				f:SetParent(ProbeFrame())
+				f:Show()
+				f:SetParent(parent)
+			end)
+		end
 		seterrorhandler(previousHandler)
 		if not ok then
 			captured = captured or tostring(f)

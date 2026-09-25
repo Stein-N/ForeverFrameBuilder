@@ -101,9 +101,12 @@ List headers get their text through `SetHeaderText`.
   description and, where needed, setup code that is entered as `OnLoad`. "Run OnLoad in editor" also runs this code on
   the canvas, so that e.g. sliders already look initialized.
 - **General** shows all templates of the shared Blizzard addons, **All** every loaded template.
-- Templates marked with a red **(!)** only work through a derived template (their `OnLoad` expects keys such as
-  `fontName` or child frames such as `.Dropdown`). They, and templates whose `OnLoad` fails, are created as a red
-  placeholder instead of raising Lua errors.
+- Templates marked with a red **(!)** only work through a derived template or under a specific parent (their
+  `OnLoad`/`OnShow` expects keys such as `fontName`, child frames such as `.Dropdown` or methods of their parent).
+  They, and templates whose `OnLoad` or `OnShow` fails, are created as a red placeholder instead of raising Lua errors
+  (every new template is shown once on an invisible frame to catch `OnShow` errors).
+- Every template widget gets a unique global name in the editor, since many older templates build child names from
+  `self:GetName()`. In the export, templates that need one get `<Project>_<Name>` unless you set a global name.
 
 The list (`Data/Templates.lua`) is generated from the Blizzard UI source with
 `python3 Tools/build_templates.py [/path/to/wow-ui-source]`. The script evaluates the TOC files the way the Forever
