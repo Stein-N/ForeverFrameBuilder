@@ -99,7 +99,7 @@ Template wird dafür einmal unsichtbar angezeigt. Jedes Template-Widget bekommt 
 weil viele ältere Templates Kind-Namen aus `self:GetName()` bauen; im Export bekommen Templates, die einen brauchen,
 `<Projekt>_<Name>`, sofern du keinen globalen Namen setzt. Die Liste (`Data/Templates.lua`) erzeugt
 `python3 Tools/build_templates.py [/pfad/zu/wow-ui-source]` aus dem UI-Source. Das Skript wertet die TOC-Dateien wie der
-Forever-Client aus (Spieltyp `camelot`, `[Family]` = Mainline, `[Game]` = Camelot, Zeilen-Bedingungen, XML-`<Include>`s,
+Forever-Client aus (Spieltyp `camelot`, den auch `mainline`-Bedingungen einschließen, `[Family]` = Mainline, `[Game]` = Camelot, Zeilen-Bedingungen, XML-`<Include>`s,
 ohne Load-on-Demand- und Login-Screen-Addons).
 
 ### Scrollbereiche

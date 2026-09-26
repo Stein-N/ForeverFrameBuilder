@@ -110,7 +110,7 @@ List headers get their text through `SetHeaderText`.
 
 The list (`Data/Templates.lua`) is generated from the Blizzard UI source with
 `python3 Tools/build_templates.py [/path/to/wow-ui-source]`. The script evaluates the TOC files the way the Forever
-client does (game type `camelot`, `[Family]` = Mainline, `[Game]` = Camelot, per-line conditions, XML `<Include>`s,
+client does (game type `camelot`, which `mainline` conditions include as well, `[Family]` = Mainline, `[Game]` = Camelot, per-line conditions, XML `<Include>`s,
 without load-on-demand and login screen addons).
 
 ### Scroll frame

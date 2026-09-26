@@ -18,6 +18,10 @@ SOURCE = sys.argv[1] if len(sys.argv) > 1 else "/home/nico/Projekte/wow-ui-sourc
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Data", "Templates.lua")
 
 GAME_TYPE = "camelot"
+# Names a TOC condition can use for this client: its own game type and its family group.
+# "mainline" covers every Mainline-family game type (camelot included), just like
+# "classic" covers vanilla to mists; that is why files use [ExcludeLoadGameType camelot].
+GAME_TYPE_NAMES = {GAME_TYPE, "mainline"}
 FAMILY = "Mainline"
 GAME = "Camelot"
 
@@ -38,14 +42,18 @@ SHARED_ADDONS = {
 AddOnsDir = os.path.join(SOURCE, "Interface", "AddOns")
 
 
+def matches_game_type(values):
+    return any(v.strip().lower() in GAME_TYPE_NAMES for v in values)
+
+
 def condition_allows(text):
     """Evaluates the [..] conditions of a TOC line for this client."""
     for kind, value in re.findall(r"\[(\w+)\s*([^\]]*)\]", text):
         values = [v.strip().lower() for v in value.split(",") if v.strip()]
         kind = kind.lower()
-        if kind == "allowloadgametype" and GAME_TYPE not in values:
+        if kind == "allowloadgametype" and not matches_game_type(values):
             return False
-        if kind == "excludeloadgametype" and GAME_TYPE in values:
+        if kind == "excludeloadgametype" and matches_game_type(values):
             return False
         if kind == "allowloadtextlocale":
             return False
@@ -100,10 +108,10 @@ def addon_loads(headers):
     if headers.get("allowload", "").strip().lower() == "glue":
         return False
     game_types = headers.get("allowloadgametype")
-    if game_types and GAME_TYPE not in [v.strip().lower() for v in game_types.split(",")]:
+    if game_types and not matches_game_type(game_types.split(",")):
         return False
     excluded = headers.get("excludeloadgametype")
-    if excluded and GAME_TYPE in [v.strip().lower() for v in excluded.split(",")]:
+    if excluded and matches_game_type(excluded.split(",")):
         return False
     return True
 
