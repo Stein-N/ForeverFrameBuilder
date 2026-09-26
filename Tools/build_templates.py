@@ -27,7 +27,7 @@ GAME = "Camelot"
 
 # Widget types CreateFrame can build and that make sense on the canvas.
 WIDGETS = {
-    "Frame", "Button", "CheckButton", "EditBox", "EventEditBox", "Slider", "StatusBar",
+    "Frame", "Button", "CheckButton", "EditBox", "EventEditBox", "Slider", "StatusBar", "ItemButton",
     "ScrollFrame", "EventFrame", "EventButton", "DropdownButton", "Cooldown", "PlayerModel",
     "Model", "DressUpModel", "ModelScene", "SimpleHTML", "MessageFrame", "ScrollingMessageFrame",
     "ColorSelect",
@@ -265,7 +265,7 @@ def main():
     with open(os.path.join(SOURCE, "Interface", "ui-toc-list.txt"), encoding="utf-8") as f:
         tocs = [line.strip() for line in f if line.strip()]
 
-    templates, info, seen = {}, {}, set()
+    templates, info, intrinsics, seen = {}, {}, {}, set()
     lua_sources = []
     loaded_addons = 0
     for toc in tocs:
@@ -293,27 +293,40 @@ def main():
                 for element in root:
                     tag = element.tag.split("}")[-1]
                     template = element.get("name")
-                    if not template or element.get("virtual") != "true":
+                    intrinsic = element.get("intrinsic") == "true"
+                    if not template or (element.get("virtual") != "true" and not intrinsic):
                         continue
                     inherits = [t.strip() for t in (element.get("inherits") or "").split(",") if t.strip()]
                     mixins = [m.strip() for m in (element.get("mixin") or "").split(",") if m.strip()]
                     keyvalues = {kv.get("key") for kv in element.iter() if kv.tag.split("}")[-1] == "KeyValue"}
                     # Children and regions reachable as self.<parentKey>.
                     keyvalues |= {sub.get("parentKey") for sub in element.iter() if sub.get("parentKey")}
-                    info[template] = (size_of(element), inherits, mixins, keyvalues, element)
-                    if tag not in WIDGETS or element.get("intrinsic") == "true" or template.startswith("$"):
+                    info[template] = (size_of(element), inherits, mixins, keyvalues, element, tag)
+                    if intrinsic:
+                        # Intrinsic widget types (ItemButton, EventFrame, ...) act as the base of
+                        # every template declared with their tag.
+                        intrinsics[template] = info[template]
+                    if tag not in WIDGETS or intrinsic or template.startswith("$"):
                         templates.pop(template, None)
                         continue
                     templates[template] = (template, tag, addon)
 
     analysis = HandlerAnalysis("\n".join(lua_sources), api_function_names(SOURCE))
 
+    def bases(entry):
+        """Inherited templates, then the intrinsic widget type the template is declared with."""
+        names = list(entry[1])
+        tag = entry[5]
+        if tag in intrinsics and intrinsics[tag] is not entry:
+            names.append(tag)
+        return names
+
     def chain(name, depth=0):
         entry = info.get(name)
         if not entry or depth > 20:
             return []
         result = [entry]
-        for parent in entry[1]:
+        for parent in bases(entry):
             result += chain(parent, depth + 1)
         return result
 
@@ -321,8 +334,8 @@ def main():
         entry = info.get(name)
         if not entry or depth > 20:
             return 0, 0
-        (w, h), inherits = entry[0], entry[1]
-        for parent in inherits:
+        w, h = entry[0]
+        for parent in bases(entry):
             pw, ph = resolve_size(parent, depth + 1)
             w, h = w or pw, h or ph
         return w, h
