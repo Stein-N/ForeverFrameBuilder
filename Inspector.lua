@@ -528,6 +528,7 @@ function Inspector:BuildFields(id)
 							changes.w, changes.h = entry[4], entry[5]
 						end
 					end
+					-- One undo step for the whole switch: the setup code below joins this checkpoint.
 					Doc:SetMany(id, changes)
 					-- Catalog templates bring the OnLoad code they need; it also runs while editing.
 					-- Setup code of the previous template is replaced as long as it is unchanged,
@@ -537,10 +538,10 @@ function Inspector:BuildFields(id)
 					if current == "" or fromPrevious then
 						local setup = catalog and catalog[5]
 						if setup then
-							Doc:SetScript(id, "OnLoad", setup)
+							Doc:SetScript(id, "OnLoad", setup, true)
 							Doc:Set(id, "editorOnLoad", true, true)
 						elseif fromPrevious then
-							Doc:SetScript(id, "OnLoad", "")
+							Doc:SetScript(id, "OnLoad", "", true)
 						end
 					elseif previous ~= catalog then
 						ns.Print(L["The OnLoad script of %s was kept; check that it fits %s."], N().name, value)

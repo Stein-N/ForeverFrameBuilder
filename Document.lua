@@ -590,12 +590,14 @@ function Doc:SetMany(id, fields, noCheckpoint, mergeKey)
 	ns.Fire("NODE_CHANGED", id, nil)
 end
 
-function Doc:SetScript(id, scriptName, code)
+function Doc:SetScript(id, scriptName, code, noCheckpoint)
 	local node = self:Get(id)
 	if not node then return end
 	code = code and code:match("^%s*(.-)%s*$") or ""
 	if (node.scripts[scriptName] or "") == code then return end
-	self:Checkpoint()
+	if not noCheckpoint then
+		self:Checkpoint()
+	end
 	node.scripts[scriptName] = code ~= "" and code or nil
 	ns.Fire("NODE_CHANGED", id, "scripts")
 end
