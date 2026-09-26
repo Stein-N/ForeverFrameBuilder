@@ -1516,6 +1516,8 @@ Register({
 		end)
 		local ok, f = pcall(CreateFrame, p.widget, globalName, parent, p.template ~= "" and p.template or nil)
 		if ok and type(f) == "table" and not captured then
+			-- Templates declared hidden="true" need an explicit Show() in the export.
+			f.mfbStartsHidden = not f:IsShown()
 			pcall(function()
 				f:SetParent(ProbeFrame())
 				f:Show()
@@ -1552,9 +1554,13 @@ Register({
 			f:SetText(p.text)
 		end
 	end,
-	Export = function(out, v, p)
+	Export = function(out, v, p, node)
 		if p.widget == "EditBox" then
 			out(v .. ":SetAutoFocus(false)")
+		end
+		local holder = ns.Canvas and ns.Canvas.holders[node.id]
+		if holder and holder.mfbStartsHidden and node.shown then
+			out(v .. ":Show() -- the template starts hidden")
 		end
 		out("if " .. v .. ".CollapseButton and " .. v .. ".CollapseButton.UpdateCollapsedState then")
 		out("\t" .. v .. ".CollapseButton:UpdateCollapsedState(false)")
