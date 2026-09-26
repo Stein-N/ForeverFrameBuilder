@@ -441,10 +441,20 @@ function Doc:InsertSubtree(clip, parentId, offset, afterId)
 		for i, childId in ipairs(node.children) do
 			node.children[i] = idMap[childId]
 		end
-		-- Anchors to elements inside the copy follow the copy; others keep their target.
-		node.relTo = idMap[node.relTo] or node.relTo
+		-- Anchors to elements inside the copy follow the copy; others keep their target as long
+		-- as it still exists in the same project, otherwise they fall back to the parent.
+		local function Remap(target)
+			if idMap[target] then
+				return idMap[target]
+			end
+			if clip.project == project and project.nodes[target] then
+				return target
+			end
+			return 0
+		end
+		node.relTo = Remap(node.relTo)
 		for _, anchor in ipairs(node.anchors or {}) do
-			anchor.target = idMap[anchor.target] or anchor.target
+			anchor.target = Remap(anchor.target)
 		end
 		project.nodes[node.id] = node
 	end
@@ -473,7 +483,7 @@ function Doc:Duplicate(id)
 	local node = self:Get(id)
 	if not node then return end
 	self:Checkpoint()
-	local clip = { root = id, nodes = CopySubtree(self.project.nodes, id, {}) }
+	local clip = { root = id, nodes = CopySubtree(self.project.nodes, id, {}), project = self.project }
 	local newId = self:InsertSubtree(clip, node.parent, ns.db.settings.gridSize * 2, id)
 	ns.Fire("STRUCTURE_CHANGED")
 	self:Select(newId)
@@ -481,7 +491,7 @@ end
 
 function Doc:Copy(id)
 	if not self:Get(id) then return end
-	self.clipboard = { root = id, nodes = CopySubtree(self.project.nodes, id, {}) }
+	self.clipboard = { root = id, nodes = CopySubtree(self.project.nodes, id, {}), project = self.project }
 end
 
 function Doc:HasClipboard()
