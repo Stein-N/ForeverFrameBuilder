@@ -23,6 +23,11 @@ Spalte **Setup**: OnLoad-Code, den der Picker automatisch einträgt (und im Edit
 | `SquareIconButtonTemplate` | Button | Quadratischer Button mit Symbol. | `self:SetIcon("Interface\\Icons\\INV_Misc_Gear_01")` |  |
 | `WowStyle2IconButtonTemplate` | Button | Runder Symbol-Button im Einstellungs-Stil. |  |  |
 | `MaximizeMinimizeButtonFrameTemplate` | Frame | Maximieren/Minimieren-Paar für Fensterecken. | `self:SetOnMaximizedCallback(function() print("maximized") end); self:SetOnMinimizedCallback(function() print("minimized") end)` |  |
+| `SharedButtonExtraSmallTemplate` | Button | Besonders kleiner moderner roter Button. |  |  |
+| `UIPanelButtonGrayTemplate` | Button | Grauer Panel-Button (wirkt inaktiv). |  |  |
+| `CommonSquareIconButtonTemplate` | Button | Moderner grauer quadratischer Button mit Symbol. | `self:SetIcon("Interface\\Icons\\INV_Misc_Gear_01")` |  |
+| `UIResetButtonTemplate` | Button | Kleines rotes X zum Zurücksetzen eines Filters. |  |  |
+| `PanelResizeButtonTemplate` | Button | Größen-Griff für eine Fensterecke. Im Code: frame:SetResizable(true) und self:Init(frame, minBreite, minHöhe). |  |  |
 
 ## Checkboxen & Radiobuttons
 
@@ -45,6 +50,7 @@ Spalte **Setup**: OnLoad-Code, den der Picker automatisch einträgt (und im Edit
 | `InputScrollFrameTemplate` | ScrollFrame | Mehrzeiliges Eingabefeld mit Rahmen, Scrollen und Zeichenzähler. | `self.EditBox:SetMaxLetters(255); self.EditBox:SetWidth(self:GetWidth() - 18); self.Instructions:SetText("Your text…")` |  |
 | `ScrollingEditBoxTemplate` | Frame | Mehrzeiliges Eingabefeld ohne Rahmen (in ein Inset legen). | `self:SetDefaultText("Your text…")` |  |
 | `MoneyInputFrameTemplate` | Frame | Eingabe für Gold / Silber / Kupfer. | `MoneyInputFrame_SetCopper(self, 123456)` |  |
+| `LevelRangeFrameTemplate` | Frame | Zwei Stufenfelder für einen Min/Max-Bereich. | `self:SetMinLevel(10); self:SetMaxLevel(60); self:SetLevelRangeChangedCallback(function(minLevel, maxLevel) print(minLevel, maxLevel) end)` |  |
 
 ## Dropdowns
 
@@ -73,6 +79,12 @@ Spalte **Setup**: OnLoad-Code, den der Picker automatisch einträgt (und im Edit
 | Template | Typ | Beschreibung | Setup | Element |
 |---|---|---|---|---|
 | `ColoredProgressBarTemplate` | Frame | Werteleiste im Forever-Stil (rot, grün, blau, weiß). | `self:SetFillTextureByColorType(ColoredProgressBarMixin.ColorType.Green); self:SetFillPercent(0.6); self:SetText("60%")` |  |
+
+## Listen & Scrollen
+
+| Template | Typ | Beschreibung | Setup | Element |
+|---|---|---|---|---|
+| `WowScrollBoxList` | Frame | Moderne scrollende Liste (ScrollBox) mit Scrollleiste und einem Button je Eintrag; auf Listengröße ziehen (z. B. 200 x 300). | `local bar = CreateFrame("EventFrame", nil, self, "MinimalScrollBar"); bar:SetPoint("TOPLEFT", self, "TOPRIGHT", 6, 0); bar:SetPoint("BOTTOMLEFT", self, "BOTTOMRIGHT", 6, 0); local view = CreateScrollBoxListLinearView(2, 2, 2, 2, 2); view:SetElementExtent(22); view:SetElementInitializer("UIPanelButtonTemplate", function(button, data) button:SetText(data.text) end); ScrollUtil.InitScrollBoxListWithScrollBar(self, bar, view); local provider = CreateDataProvider(); for i = 1, 30 do provider:Insert({ text = "Entry " .. i }); end; self:SetDataProvider(provider)` |  |
 
 ## Reiter & Überschriften
 
@@ -104,6 +116,8 @@ Spalte **Setup**: OnLoad-Code, den der Picker automatisch einträgt (und im Edit
 | `FlatPanelBackgroundTemplate` | Frame | Flacher moderner Panel-Hintergrund. |  |  |
 | `ShadowOverlayTemplate` | Frame | Weicher Schatten in den Ecken eines Bereichs. |  |  |
 | `NineSlicePanelTemplate` | Frame | Nine-Slice-Rahmen mit beliebigem Blizzard-Layout. | `NineSliceUtil.ApplyLayoutByName(self, "Dialog")` |  |
+| `CollectionsBackgroundTemplate` | Frame | Gekachelter Hintergrund des Sammlungsjournals mit Inset-Rahmen. |  |  |
+| `HorizontalBarTemplate` | Frame | Waagerechte Trennleiste aus Stein. |  |  |
 
 ## Text & Anzeige
 
@@ -113,12 +127,17 @@ Spalte **Setup**: OnLoad-Code, den der Picker automatisch einträgt (und im Edit
 | `NewFeatureLabelTemplate` | Frame | Leuchtendes NEU-Label. |  |  |
 | `LoadingSpinnerTemplate` | Frame | Animierter Lade-Kreisel. |  |  |
 | `SpinnerTemplate` | Frame | Moderner animierter Kreisel. |  |  |
+| `SmallMoneyFrameTemplate` | Frame | Anzeige für Gold / Silber / Kupfer; ohne Setup-Code zeigt sie das Geld des Spielers. | `MoneyFrame_SetType(self, "STATIC"); MoneyFrame_Update(self, 1234567)` |  |
+| `MoneyFrameTemplate` | Frame | Größere Geldanzeige. | `MoneyFrame_SetType(self, "STATIC"); MoneyFrame_Update(self, 1234567)` |  |
+| `CooldownFrameTemplate` | Cooldown | Abklingzeit-Animation; mit Eltern füllen über ein Symbol legen. | `self:SetCooldown(GetTime(), 60)` |  |
+| `ModelWithControlsTemplate` | PlayerModel | 3D-Modell mit Zoom- und Dreh-Buttons beim Überfahren. | `self:SetUnit("player")` |  |
 ## Bewusst nicht im Katalog
 
 - `ScrollingFontTemplate`: sein `OnLoad` prüft `assert(self.fontName)`. Blizzard setzt `fontName` immer per `<KeyValue>` in einem abgeleiteten Template, bevor `OnLoad` läuft – allein erzeugt schlägt es fehl. Für scrollbaren Text: Element *Scrollbereich* mit einem *Text* darin.
 - `DropdownWithSteppersTemplate` / `…AndLabelTemplate`: erwarten einen Kind-Frame `.Dropdown` aus einem abgeleiteten Template und werfen allein erzeugt einen Fehler. Das Element *Dropdown* hat stattdessen die Option „Pfeil-Stepper“.
-- `WowStyle1ThinDropdownTemplate`, `ModelWithControlsTemplate`: existieren im Source nur für andere Flavors und werden von Forever nicht geladen.
+- `WowStyle1ThinDropdownTemplate`: existiert im Source nur für andere Flavors und wird von Forever nicht geladen.
 - `UIDropDownMenuTemplate` (altes Dropdown-System): braucht `UIDropDownMenu_Initialize` und globale Namen; das moderne Menüsystem (Element *Dropdown*) ersetzt es.
-- Geld-Anzeigen (`MoneyFrameTemplate`, `SmallMoneyFrameTemplate`): brauchen `MoneyFrame_SetType` und einen globalen Frame-Namen.
+- `ExpandBarTemplate`: klappt einen Ziel-Frame auf und zu, braucht dafür aber `SetExpandTarget(frame)` – ohne Ziel wirft ein Klick einen Fehler. Das Element *Aufklappbarer Abschnitt* deckt den Fall ab.
+- Bag-, Bank- und Charakter-Slots (`ContainerFrameItemButtonTemplate`, `PaperDollItemSlotButtonTemplate`, …): hängen an Taschen-IDs bzw. Ausrüstungsplätzen. Für eigene Gegenstands-Buttons gibt es das Element *Gegenstandsbutton*.
 - Feature-spezifische Templates (Gilden, Talente, Aktionsleisten, …): hängen meist an globalen Frames und Daten ihres Addons. Sie sind im Picker unter „Alle“ zu finden, laufen aber oft nicht eigenständig.
-- Allgemein: Der Generator prüft die `OnLoad`- und `OnShow`-Handler jedes Templates über die ganze Vererbungskette (Mixin-Methoden, `function=`-Handler, Inline-Skripte) und verfolgt Aufrufe zwei Ebenen tief. Als **nicht eigenständig nutzbar** (rotes **(!)** im Picker, Platzhalter auf der Arbeitsfläche) gelten Templates, die per `assert` einen Schlüssel verlangen, ohne Prüfung ein Kind-Element (`self.X:…`) benutzen, das die Kette nicht mitbringt, oder Methoden/Felder eines bestimmten Eltern-Frames (`self:GetParent():…`) brauchen – derzeit 66, u. a. `ScrollingFontTemplate`, `DropdownWithSteppers*`, `AlphaHighlightButtonTemplate`, `OptionsFrameTabButtonTemplate`, die Scrollbar-Basis-Templates und die `EditMode…SystemTemplate`s. 24 Templates bauen Namen aus `self:GetName()` (z. B. `UIPanelScrollFrameTemplate`, `FauxScrollFrameTemplate`); sie bekommen im Editor und im Export automatisch einen globalen Namen.
+- Allgemein: Der Generator prüft die `OnLoad`- und `OnShow`-Handler jedes Templates über die ganze Vererbungskette (Mixin-Methoden, `function=`-Handler, Inline-Skripte) und verfolgt Aufrufe zwei Ebenen tief. Als **nicht eigenständig nutzbar** (rotes **(!)** im Picker, Platzhalter auf der Arbeitsfläche) gelten Templates, die per `assert` einen Schlüssel verlangen, ohne Prüfung ein Kind-Element (`self.X:…`) benutzen, das die Kette nicht mitbringt, oder Methoden/Felder eines bestimmten Eltern-Frames (`self:GetParent():…`) brauchen – derzeit 69, u. a. `ScrollingFontTemplate`, `DropdownWithSteppers*`, `AlphaHighlightButtonTemplate`, `OptionsFrameTabButtonTemplate`, die Scrollbar-Basis-Templates und die `EditMode…SystemTemplate`s. 30 Templates bauen Namen aus `self:GetName()` (z. B. `UIPanelScrollFrameTemplate`, `FauxScrollFrameTemplate`); sie bekommen im Editor und im Export automatisch einen globalen Namen.

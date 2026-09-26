@@ -14,6 +14,7 @@ ns.CatalogCategories = {
 	{ key = "dropdowns", en = "Dropdowns", de = "Dropdowns" },
 	{ key = "sliders", en = "Sliders", de = "Schieberegler" },
 	{ key = "bars", en = "Progress bars", de = "Fortschrittsleisten" },
+	{ key = "lists", en = "Lists & scrolling", de = "Listen & Scrollen" },
 	{ key = "tabs", en = "Tabs & headers", de = "Reiter & Überschriften" },
 	{ key = "frames", en = "Windows, borders & backgrounds", de = "Fenster, Rahmen & Hintergründe" },
 	{ key = "display", en = "Text & display", de = "Text & Anzeige" },
@@ -37,6 +38,13 @@ ns.Catalog = {
 	{ "WowStyle2IconButtonTemplate", "buttons", "Settings-style round icon button.", "Runder Symbol-Button im Einstellungs-Stil." },
 	{ "MaximizeMinimizeButtonFrameTemplate", "buttons", "Maximize/minimize button pair for window corners.", "Maximieren/Minimieren-Paar für Fensterecken.",
 		"self:SetOnMaximizedCallback(function() print(\"maximized\") end)\nself:SetOnMinimizedCallback(function() print(\"minimized\") end)" },
+	{ "SharedButtonExtraSmallTemplate", "buttons", "Extra small modern red button.", "Besonders kleiner moderner roter Button." },
+	{ "UIPanelButtonGrayTemplate", "buttons", "Grey panel button (looks inactive).", "Grauer Panel-Button (wirkt inaktiv)." },
+	{ "CommonSquareIconButtonTemplate", "buttons", "Modern grey square button with an icon.", "Moderner grauer quadratischer Button mit Symbol.",
+		"self:SetIcon(\"Interface\\\\Icons\\\\INV_Misc_Gear_01\")" },
+	{ "UIResetButtonTemplate", "buttons", "Small red X that resets a filter.", "Kleines rotes X zum Zurücksetzen eines Filters." },
+	{ "PanelResizeButtonTemplate", "buttons", "Resize grip for a window corner. In code: frame:SetResizable(true) and self:Init(frame, minWidth, minHeight).",
+		"Größen-Griff für eine Fensterecke. Im Code: frame:SetResizable(true) und self:Init(frame, minBreite, minHöhe)." },
 
 	-- Checkboxes
 	{ "UICheckButtonTemplate", "checks", "Classic checkbox with a label to its right.", "Klassische Checkbox mit Beschriftung rechts.", nil, "CheckButton" },
@@ -60,6 +68,8 @@ ns.Catalog = {
 		"self:SetDefaultText(\"Your text…\")" },
 	{ "MoneyInputFrameTemplate", "inputs", "Gold / silver / copper input.", "Eingabe für Gold / Silber / Kupfer.",
 		"MoneyInputFrame_SetCopper(self, 123456)" },
+	{ "LevelRangeFrameTemplate", "inputs", "Two level fields for a min/max range.", "Zwei Stufenfelder für einen Min/Max-Bereich.",
+		"self:SetMinLevel(10)\nself:SetMaxLevel(60)\nself:SetLevelRangeChangedCallback(function(minLevel, maxLevel) print(minLevel, maxLevel) end)" },
 
 	-- Dropdowns (all covered by the Dropdown element)
 	{ "WowStyle1DropdownTemplate", "dropdowns", "Standard dropdown; use the Dropdown element (style Standard).", "Standard-Dropdown; nutze das Element Dropdown (Stil Standard).", nil, "Dropdown" },
@@ -85,6 +95,10 @@ ns.Catalog = {
 	-- Bars
 	{ "ColoredProgressBarTemplate", "bars", "Forever-style stat bar (red, green, blue, white).", "Werteleiste im Forever-Stil (rot, grün, blau, weiß).",
 		"self:SetFillTextureByColorType(ColoredProgressBarMixin.ColorType.Green)\nself:SetFillPercent(0.6)\nself:SetText(\"60%\")" },
+
+	-- Lists & scrolling
+	{ "WowScrollBoxList", "lists", "Modern scrolling list (ScrollBox) with a scroll bar and one button per entry; give it a list-sized frame (e.g. 200 x 300).", "Moderne scrollende Liste (ScrollBox) mit Scrollleiste und einem Button je Eintrag; auf Listengröße ziehen (z. B. 200 x 300).",
+		"local bar = CreateFrame(\"EventFrame\", nil, self, \"MinimalScrollBar\")\nbar:SetPoint(\"TOPLEFT\", self, \"TOPRIGHT\", 6, 0)\nbar:SetPoint(\"BOTTOMLEFT\", self, \"BOTTOMRIGHT\", 6, 0)\nlocal view = CreateScrollBoxListLinearView(2, 2, 2, 2, 2)\nview:SetElementExtent(22)\nview:SetElementInitializer(\"UIPanelButtonTemplate\", function(button, data)\n\tbutton:SetText(data.text)\nend)\nScrollUtil.InitScrollBoxListWithScrollBar(self, bar, view)\nlocal provider = CreateDataProvider()\nfor i = 1, 30 do\n\tprovider:Insert({ text = \"Entry \" .. i })\nend\nself:SetDataProvider(provider)" },
 
 	-- Tabs & headers
 	{ "PanelTabButtonTemplate", "tabs", "Classic tab below a window; use the Tabs element.", "Klassischer Reiter unter einem Fenster; nutze das Element Reiter.", nil, "Tabs" },
@@ -115,6 +129,8 @@ ns.Catalog = {
 	{ "ShadowOverlayTemplate", "frames", "Soft shadow in the corners of an area.", "Weicher Schatten in den Ecken eines Bereichs." },
 	{ "NineSlicePanelTemplate", "frames", "Nine-slice border with any Blizzard layout.", "Nine-Slice-Rahmen mit beliebigem Blizzard-Layout.",
 		"NineSliceUtil.ApplyLayoutByName(self, \"Dialog\")" },
+	{ "CollectionsBackgroundTemplate", "frames", "Tiled background of the collections journal, with inset border.", "Gekachelter Hintergrund des Sammlungsjournals mit Inset-Rahmen." },
+	{ "HorizontalBarTemplate", "frames", "Stone horizontal divider bar.", "Waagerechte Trennleiste aus Stein." },
 
 	-- Text & display
 	{ "ColorSwatchTemplate", "display", "Small color swatch.", "Kleines Farbfeld.",
@@ -122,6 +138,14 @@ ns.Catalog = {
 	{ "NewFeatureLabelTemplate", "display", "Glowing NEW label.", "Leuchtendes NEU-Label." },
 	{ "LoadingSpinnerTemplate", "display", "Animated loading spinner.", "Animierter Lade-Kreisel." },
 	{ "SpinnerTemplate", "display", "Modern animated spinner.", "Moderner animierter Kreisel." },
+	{ "SmallMoneyFrameTemplate", "display", "Gold / silver / copper display; without setup code it shows the player's money.", "Anzeige für Gold / Silber / Kupfer; ohne Setup-Code zeigt sie das Geld des Spielers.",
+		"MoneyFrame_SetType(self, \"STATIC\")\nMoneyFrame_Update(self, 1234567)" },
+	{ "MoneyFrameTemplate", "display", "Larger money display.", "Größere Geldanzeige.",
+		"MoneyFrame_SetType(self, \"STATIC\")\nMoneyFrame_Update(self, 1234567)" },
+	{ "CooldownFrameTemplate", "display", "Cooldown swipe; lay it over an icon with Fill parent.", "Abklingzeit-Animation; mit Eltern füllen über ein Symbol legen.",
+		"self:SetCooldown(GetTime(), 60)" },
+	{ "ModelWithControlsTemplate", "display", "3D model with zoom and rotate buttons on hover.", "3D-Modell mit Zoom- und Dreh-Buttons beim Überfahren.",
+		"self:SetUnit(\"player\")" },
 }
 
 -- Returns the catalog entry for a template name, if any.
