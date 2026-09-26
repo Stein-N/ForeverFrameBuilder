@@ -63,6 +63,11 @@ local function DescribeNode(node)
 		anchors = ns.Doc.GetAnchors and ns.Doc.GetAnchors(node) or nil,
 		w = node.w, h = node.h, fill = node.fill,
 	}
+	-- Target names are stored now: the report may be read after switching projects.
+	for _, anchor in ipairs(info.anchors or {}) do
+		local target = anchor.target ~= 0 and ns.Doc:Get(anchor.target)
+		anchor.targetName = target and target.name or nil
+	end
 	local template = node.props and node.props.template
 	if node.type == "Template" and template then
 		local entry = ns.GetTemplateInfo(template)
@@ -230,9 +235,8 @@ function Errors:Report(entry)
 		table.insert(lines, "")
 		table.insert(lines, ("Layout: %s x %s%s"):format(ns.LuaNum(element.w or 0), ns.LuaNum(element.h or 0), element.fill and ", fill parent" or ""))
 		for i, anchor in ipairs(element.anchors or {}) do
-			local target = anchor.target ~= 0 and ns.Doc:Get(anchor.target)
 			table.insert(lines, ("  anchor %d: %s -> %s %s (%s, %s)"):format(i, anchor.point,
-				target and target.name or "parent", anchor.relPoint, ns.LuaNum(anchor.x), ns.LuaNum(anchor.y)))
+				anchor.targetName or (anchor.target ~= 0 and ("#" .. tostring(anchor.target))) or "parent", anchor.relPoint, ns.LuaNum(anchor.x), ns.LuaNum(anchor.y)))
 		end
 		table.insert(lines, "Properties:")
 		for _, key in ipairs(SortedKeys(element.props)) do
