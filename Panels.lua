@@ -22,7 +22,7 @@ local TREE_TOGGLE_WIDTH = 16
 -- Palette groups by kind of element; element types missing here land in the last group.
 local PALETTE_GROUPS = {
 	{ key = "containers", label = L["Containers"], types = { "Frame", "Window", "Tabs", "Section", "ScrollFrame" } },
-	{ key = "controls", label = L["Controls"], types = { "Button", "CheckButton", "EditBox", "Dropdown", "Slider" } },
+	{ key = "controls", label = L["Controls"], types = { "Button", "CheckButton", "EditBox", "Dropdown", "Slider", "ItemButton" } },
 	{ key = "display", label = L["Display"], types = { "StatusBar", "Texture", "FontString", "Model" } },
 	{ key = "templates", label = L["Blizzard templates"], types = { "Template" } },
 }

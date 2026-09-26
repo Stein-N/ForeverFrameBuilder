@@ -28,8 +28,8 @@ Drag-&-Drop-Editor für Ingame-Frames, ähnlich einem Website-Builder. Öffnen m
 
 ## Elemente
 
-Frame (mit Backdrop), Fenster, Reiter, aufklappbarer Abschnitt, Scrollbereich, Button, Checkbox, Eingabefeld, Dropdown, Schieberegler, Statusleiste,
-Textur, Text (FontString), 3D-Modell und **Template** (jedes Blizzard-Template).
+Frame (mit Backdrop), Fenster, Reiter, aufklappbarer Abschnitt, Scrollbereich, Button, Checkbox, Eingabefeld, Dropdown, Schieberegler,
+Gegenstandsbutton, Statusleiste, Textur, Text (FontString), 3D-Modell und **Template** (jedes Blizzard-Template).
 
 **Eltern füllen** (unter Layout) verankert ein Element an allen Kanten seines Eltern-Elements (`SetAllPoints`).
 Solche Elemente werden nicht selbst verschoben: Ziehen bewegt das Eltern-Element.
@@ -83,6 +83,15 @@ Deckt alle eigenständig nutzbaren Dropdowns des modernen Menüsystems ab: `WowS
 Einträge stehen durch `;` getrennt in einem Feld (`-` = Trennlinie, `#Text` = Überschrift). Modi: Einfachauswahl (Radio),
 Mehrfachauswahl (Checkboxen) oder Aktionen (Buttons). Optional mit Pfeil-Steppern links/rechts (Einfachauswahl).
 Skript `OnSelect(self, index, text, checked)`; `index` zählt nur echte Einträge. Export: `SetupMenu` mit `E.<Name>.Selected`.
+
+### Gegenstandsbutton
+
+Blizzards intrinsischer `ItemButton` (das Widget von Taschen und Beutelisten), erzeugt mit `CreateFrame("ItemButton")`.
+„Gegenstand" nimmt eine Item-ID, einen Link oder einen Namen; Symbol und Qualitätsrahmen kommen vom Gegenstand
+(Daten, die der Client noch nicht kennt, werden nachgetragen, sobald sie da sind). Ohne Gegenstand zeigt der Button
+„Symbol ohne Gegenstand" und „Rahmen ohne Gegenstand". „Anzahl" zeigt eine Stapelzahl (ab 2), „Tooltip" den
+Gegenstands-Tooltip beim Überfahren (in der Vorschau und im Export). Export: `SetItem`, `SetItemButtonCount`,
+`SetItemButtonDesaturated`; spätere Änderungen laufen über dieselben Methoden, z. B. `E.<Name>:SetItem(19019)`.
 
 ### Template
 

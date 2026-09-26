@@ -691,6 +691,110 @@ Register({
 })
 
 ---------------------------------------------------------------------------
+-- ItemButton (intrinsic widget of Blizzard_ItemButton)
+---------------------------------------------------------------------------
+
+-- Border colors of Enum.ItemQuality; only used without an item (an item brings its own).
+local ITEM_QUALITIES = {
+	{ value = -1, label = L["None"] },
+	{ value = 0, label = L["Poor"] },
+	{ value = 1, label = L["Common"] },
+	{ value = 2, label = L["Uncommon"] },
+	{ value = 3, label = L["Rare"] },
+	{ value = 4, label = L["Epic"] },
+	{ value = 5, label = L["Legendary"] },
+	{ value = 6, label = L["Artifact"] },
+	{ value = 7, label = L["Heirloom"] },
+}
+
+local function ItemValue(text)
+	text = strtrim(text or "")
+	return tonumber(text) or (text ~= "" and text or nil)
+end
+
+-- Shows the item's tooltip while hovered (same code as in the export).
+local function ItemButtonOnEnter(self)
+	local link = self:GetItemLink()
+	if not link then return end
+	GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+	GameTooltip:SetHyperlink(link)
+	GameTooltip:Show()
+end
+
+Register({
+	type = "ItemButton",
+	label = L["Item button"],
+	frameType = "ItemButton",
+	width = 37, height = 37,
+	props = {
+		{ key = "item", label = L["Item (ID / link / name)"], kind = "string", default = "6948" },
+		{ key = "count", label = L["Count"], kind = "number", default = 0, min = 0, step = 1 },
+		{ key = "icon", label = L["Icon without item"], kind = "string", default = "Interface\\Icons\\INV_Misc_Bag_08" },
+		{ key = "quality", label = L["Border without item"], kind = "select", default = -1, options = ITEM_QUALITIES },
+		{ key = "desaturated", label = L["Desaturated"], kind = "bool", default = false },
+		{ key = "tooltip", label = L["Tooltip"], kind = "bool", default = true },
+	},
+	scripts = {
+		{ name = "OnClick", args = "self, button, down" },
+		{ name = "OnEnter", args = "self" },
+		{ name = "OnLeave", args = "self" },
+	},
+	Create = function(parent)
+		local f = CreateFrame("ItemButton", nil, parent)
+		-- Edit mode never reaches these: the canvas overlay takes the mouse there.
+		f:SetScript("OnEnter", function(self)
+			if self.mfbTooltip then
+				ItemButtonOnEnter(self)
+			end
+		end)
+		f:SetScript("OnLeave", GameTooltip_Hide)
+		return f
+	end,
+	Apply = function(f, p)
+		local item = ItemValue(p.item)
+		-- Item data may arrive later; the mixin then fills in icon and quality by itself.
+		f:SetItem(item)
+		if not item then
+			f:SetItemButtonTexture(tonumber(p.icon) or (p.icon ~= "" and p.icon or nil))
+			f:SetItemButtonQuality(p.quality >= 0 and p.quality or nil)
+		end
+		f:SetItemButtonCount(p.count)
+		SetItemButtonDesaturated(f, p.desaturated)
+		f.mfbTooltip = p.tooltip
+	end,
+	Export = function(out, v, p)
+		local item = ItemValue(p.item)
+		if item then
+			out(v .. ":SetItem(" .. (type(item) == "number" and ns.LuaNum(item) or ns.LuaStr(item)) .. ")")
+		else
+			if p.icon ~= "" then
+				local icon = tonumber(p.icon)
+				out(v .. ":SetItemButtonTexture(" .. (icon and ns.LuaNum(icon) or ns.LuaStr(p.icon)) .. ")")
+			end
+			if p.quality >= 0 then
+				out(v .. ":SetItemButtonQuality(" .. ns.LuaNum(p.quality) .. ")")
+			end
+		end
+		if p.count > 0 then
+			out(v .. ":SetItemButtonCount(" .. ns.LuaNum(p.count) .. ")")
+		end
+		if p.desaturated then
+			out("SetItemButtonDesaturated(" .. v .. ", true)")
+		end
+		if p.tooltip then
+			out(v .. ":SetScript(\"OnEnter\", function(self)")
+			out("\tlocal link = self:GetItemLink()")
+			out("\tif not link then return end")
+			out("\tGameTooltip:SetOwner(self, \"ANCHOR_RIGHT\")")
+			out("\tGameTooltip:SetHyperlink(link)")
+			out("\tGameTooltip:Show()")
+			out("end)")
+			out(v .. ":SetScript(\"OnLeave\", GameTooltip_Hide)")
+		end
+	end,
+})
+
+---------------------------------------------------------------------------
 -- Window (Blizzard frame templates)
 ---------------------------------------------------------------------------
 
@@ -1328,7 +1432,7 @@ local function ProbeFrame()
 end
 
 local WIDGET_TYPES = {
-	"Frame", "Button", "CheckButton", "EditBox", "Slider", "StatusBar", "ScrollFrame",
+	"Frame", "Button", "CheckButton", "EditBox", "Slider", "StatusBar", "ScrollFrame", "ItemButton",
 	"EventFrame", "EventButton", "DropdownButton", "Cooldown", "PlayerModel", "ModelScene",
 	"SimpleHTML", "MessageFrame", "ScrollingMessageFrame", "ColorSelect",
 }
@@ -1470,7 +1574,7 @@ Register({
 -- Palette order (registration order is only the fallback).
 ns.ElementOrder = {
 	"Frame", "Window", "Tabs", "Section", "ScrollFrame", "Button", "CheckButton", "EditBox", "Dropdown",
-	"Slider", "StatusBar", "Texture", "FontString", "Model", "Template",
+	"Slider", "ItemButton", "StatusBar", "Texture", "FontString", "Model", "Template",
 }
 
 -- Default property values for a freshly created element.

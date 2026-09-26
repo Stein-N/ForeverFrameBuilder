@@ -37,7 +37,7 @@ Open the editor with `/ffb` (or `/framebuilder`, or through the addon compartmen
 ## Elements
 
 Frame (with backdrop), Window, Tabs, Collapsible section, Scroll frame, Button, Checkbox, Input box, Dropdown, Slider,
-Status bar, Texture, Text (FontString), 3D model and **Template** (any Blizzard template).
+Item button, Status bar, Texture, Text (FontString), 3D model and **Template** (any Blizzard template).
 
 **Fill parent** (under Layout) anchors an element to all edges of its parent (`SetAllPoints`). Such elements are not
 moved on their own: dragging them moves the parent.
@@ -90,6 +90,15 @@ Covers every dropdown of the modern menu system that works on its own: `WowStyle
 Entries are entered in one field, separated by `;` (`-` = divider, `#Text` = title). Modes: single choice (radio),
 multiple choice (checkboxes) or actions (buttons). Single choice can get arrow steppers on both sides. Script
 `OnSelect(self, index, text, checked)`; `index` counts real entries only. Export: `SetupMenu` with `E.<Name>.Selected`.
+
+### Item button
+
+Blizzard's intrinsic `ItemButton` (the widget of bags and loot lists), created with `CreateFrame("ItemButton")`.
+"Item" takes an item ID, link or name; icon and quality border come from the item (item data the client doesn't know
+yet is filled in once it arrives). Without an item the button shows "Icon without item" and "Border without item".
+"Count" shows a stack number (from 2), "Tooltip" shows the item tooltip while hovered (in the preview and the export).
+Export: `SetItem`, `SetItemButtonCount`, `SetItemButtonDesaturated`; later changes go through the same methods, e.g.
+`E.<Name>:SetItem(19019)`.
 
 ### Template
 
